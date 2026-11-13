@@ -24,6 +24,8 @@ python3 tools/m4a_locate.py game.gba
 用 mGBA 打开 ROM，打开调试器，在 `m4a_locate.py` 给出的 `m4aSongNumStart` 地址下断点（很多游戏的地图音乐走
 `m4aSongNumStartOrChange` 和 `m4aSongNumStartOrContinue`，这两个也一起下断点）。玩到你想替换音乐的场景，断点触发时 `r0` 就是歌曲编号。
 
+没有调试器？去问熟悉这个游戏的人，或者查这个游戏的音频资料。不要猜：编号错了就会替换掉别的歌。
+
 记下每一首要替换的歌，再查它由哪个播放器播放：
 
 ```sh
@@ -31,9 +33,12 @@ python3 tools/m4a_locate.py --song 413 game.gba
 # song 413: player 0 (header 0x08...)
 ```
 
-标题画面或大地图音乐所用的播放器，就是这个游戏的 BGM 播放器。很多游戏是 0，但不全是；我们测试过的一个游戏是 31。
+把标题画面或大地图音乐所用的播放器编号填到 `BGM_PLAYER`（第 3 步）。很多游戏是 0，但不全是；我们测试过的一个游戏是 31。
 
 ## 3. 编写补丁
+
+在本仓库的一份副本里操作（或者任何保持 `examples/binary-hook/` 和 `asm/` 相对位置不变的目录）：`hook.asm` 会 include
+`../../asm/gxa.s`。
 
 ```sh
 cd examples/binary-hook
@@ -41,7 +46,7 @@ python3 ../../tools/m4a_locate.py --armips /path/to/game.gba > defs.asm
 cp example.asm my-hack.asm
 ```
 
-在 `my-hack.asm` 里填好输入、输出文件名，`BGM_PLAYER` 和映射表：
+在 `my-hack.asm` 里填好 `.open` 的输入、输出 ROM 路径（可以用绝对路径），`BGM_PLAYER` 和映射表：
 
 ```
 gxa_song_tracks:
@@ -55,7 +60,7 @@ gxa_song_tracks:
 ## 4. 编译
 
 ```sh
-armips my-hack.asm                   # 要在 examples/binary-hook 目录里运行：armips 从这里解析 include 路径
+armips my-hack.asm                   # 在 examples/binary-hook 目录里运行，或：armips -root <该目录> my-hack.asm
 python3 ../../tools/gba_header.py --check game-gxa.gba
 ```
 
@@ -63,8 +68,12 @@ python3 ../../tools/gba_header.py --check game-gxa.gba
 
 ## 5. 制作 pack
 
-按 [making-a-pack.zh-CN.md](making-a-pack.zh-CN.md) 操作。曲目 id 就是映射表右边那一列。如果你发布的是针对某一个原版 ROM 的补丁或成品
-ROM，用打完补丁后 ROM 的 SHA-1 来匹配 pack。
+按 [making-a-pack.zh-CN.md](making-a-pack.zh-CN.md) 操作，顺序如下：
+
+1. 先编好补丁后的 ROM 并检查文件头（第 4 步）。之后 ROM 再有任何改动，SHA-1 都会变。
+2. 运行 `shasum -a 1 game-gxa.gba`（Windows：`certutil -hashfile game-gxa.gba SHA1`），把结果填进 `match`。
+3. 曲目 id 就是映射表右边那一列。BGM 曲目在 GXA 上是循环播放的，记得设置 `loop` 点。
+4. 打包，文件名和补丁后的 ROM 保持一致：`game-gxa.gba` 加载 `game-gxa.gxa`。
 
 ## 6. 三种方式各测一次
 
@@ -73,6 +82,9 @@ ROM，用打完补丁后 ROM 的 SHA-1 来匹配 pack。
 | GXA 模拟器 + 完整 pack | 播放你的曲目，底下听不到原来的音乐 |
 | 同上，但 pack 里删掉一首已映射的曲目 | 那个场景播原来的音乐 |
 | 不支持 GXA 的模拟器，或不放 pack | 游戏和原来完全一样 |
+
+第二项测试的做法：复制一份 pack 目录，从 `manifest.json` 里删掉一首曲目，另打一个 pack。要确认原曲确实被静音，可以做一个曲目全是静音的
+pack：这时已映射的场景除了音效之外应该没有声音。
 
 ## hook 的工作原理
 
@@ -88,6 +100,9 @@ ROM，用打完补丁后 ROM 的 SHA-1 来匹配 pack。
 - 曲目缺失或损坏时会立刻读到 `missing` 或 `error`（SPEC.md §3），玩家听到的是原曲。
 
 ## 限制
+
+- **帧时序**：GXA 曲目播放期间，被静音的 m4a 原曲混的是静音而不是乐器，CPU 开销会略少一点。动画和按帧计数的东西可能和原版差一帧；
+  游戏逻辑和场景流程不变。
 
 - **淡出**：游戏淡出音乐（`m4aMPlayFadeOut`）时，GXA 曲目会一直播到下一首歌开始或停止。尽量映射那些"场景结束时会换歌"的音乐，
   或者把 hook 扩展到你这个游戏的淡出函数上。

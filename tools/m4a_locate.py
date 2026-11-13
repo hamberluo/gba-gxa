@@ -223,7 +223,10 @@ def main():
         print(json.dumps(res, indent=1))
     else:
         for k, v in out.items():
-            print('%-26s 0x%07X  (0x%08X)' % (k, v, v + ROM_BASE))
+            if k == 'player_reg':
+                print('%-26s r%d' % (k, v))
+            else:
+                print('%-26s 0x%07X  (0x%08X)' % (k, v, v + ROM_BASE))
         print('%-26s %s' % ('free_space', '0x%07X, %d bytes' % fs if fs else 'none at the end of the ROM'))
         print('hook: %s' % ('; '.join(problems) if problems else 'ok (examples/binary-hook fits this ROM)'))
     return 0

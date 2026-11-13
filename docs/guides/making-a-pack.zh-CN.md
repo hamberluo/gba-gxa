@@ -35,7 +35,8 @@ WAV 和 FLAC 会被编码成 Ogg Vorbis，Ogg 文件原样放入。单声道、�
 }
 ```
 
-- `tracks`：曲目 id（和 ROM 里用的一致）→ 文件。`loop` 是循环命令跳回的采样帧，按文件自身的采样率计；`gain` 的单位是 dB。
+- `tracks`：曲目 id（和 ROM 里用的一致）→ 文件。`loop` 是循环命令跳回的采样帧，按文件自身的采样率计；不写的话循环时从头开始。
+  `gain` 的单位是 dB。背景音乐通常用循环命令播放，记得给 BGM 曲目设置 loop 点。
 - `match`：哪些 ROM 会加载这个 pack，二选一：
 
 | 规则 | 适用场景 |
@@ -44,7 +45,7 @@ WAV 和 FLAC 会被编码成 Ogg Vorbis，Ogg 文件原样放入。单声道、�
 | `{"code": "...", "title": "..."}` + `version` | 你自己的 ROM，每次发布都递增文件头的版本字节（`0xBC`）。`"version": 1` 表示 1 及以后的所有版本。 |
 
 code 是 `0xAC` 处的 4 个字节，title 是 `0xA0` 处的 12 个字节。hack 会沿用原游戏的 code 和 title，所以应该用 `sha1` 匹配；
-如果你会递增版本字节，也可以用 `version` 匹配。
+如果你会递增版本字节，也可以用 `version` 匹配。最终 ROM 的 SHA-1 用 `shasum -a 1 game.gba` 获取（Windows：`certutil -hashfile game.gba SHA1`）。
 
 ## 3. 打包并检查
 

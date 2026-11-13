@@ -28,6 +28,9 @@ Open the ROM in mGBA, open the debugger, and set a breakpoint at the `m4aSongNum
 `m4a_locate.py` printed (and at `m4aSongNumStartOrChange` and `m4aSongNumStartOrContinue`, which many games
 use for map music). Play to the scene you want. When the breakpoint hits, `r0` is the song number.
 
+No debugger? Ask whoever knows the game, or look the numbers up in the game's sound documentation. Do
+not guess: a wrong number replaces the wrong song.
+
 Write down each song you want to replace, then find the player that plays it:
 
 ```sh
@@ -35,10 +38,13 @@ python3 tools/m4a_locate.py --song 413 game.gba
 # song 413: player 0 (header 0x08...)
 ```
 
-The player of your title or field music is the game's BGM player. It is 0 in many games but not all; one
-game we tested uses 31.
+Set `BGM_PLAYER` (step 3) to the player of your title or field music. It is 0 in many games but not all;
+one game we tested uses 31.
 
 ## 3. Write the patch
+
+Work in a copy of this repository (or any folder that keeps `examples/binary-hook/` and `asm/` side by
+side): `hook.asm` includes `../../asm/gxa.s`.
 
 ```sh
 cd examples/binary-hook
@@ -46,7 +52,8 @@ python3 ../../tools/m4a_locate.py --armips /path/to/game.gba > defs.asm
 cp example.asm my-hack.asm
 ```
 
-In `my-hack.asm`, set the input and output file names, `BGM_PLAYER`, and the table:
+In `my-hack.asm`, set the input and output ROM paths in `.open` (absolute paths are fine), `BGM_PLAYER`, and
+the table:
 
 ```
 gxa_song_tracks:
@@ -60,7 +67,7 @@ Songs not in the table play as before.
 ## 4. Build
 
 ```sh
-armips my-hack.asm                   # run it from examples/binary-hook: armips resolves includes there
+armips my-hack.asm                   # from examples/binary-hook, or: armips -root <that folder> my-hack.asm
 python3 ../../tools/gba_header.py --check game-gxa.gba
 ```
 
@@ -69,8 +76,12 @@ emulators and flash carts accept that.
 
 ## 5. Make the pack
 
-Follow [making-a-pack.md](making-a-pack.md). Track ids are the numbers on the right of your table. Match the
-pack by the SHA-1 of the patched ROM if you release the ROM or a patch for one base ROM.
+Follow [making-a-pack.md](making-a-pack.md), in this order:
+
+1. Build the patched ROM and check its header (step 4). Any later change to the ROM changes its SHA-1.
+2. `shasum -a 1 game-gxa.gba` (Windows: `certutil -hashfile game-gxa.gba SHA1`), and put it in `match`.
+3. Track ids are the numbers on the right of your table. BGM tracks loop on GXA: give them a `loop` point.
+4. Build the pack and name it after the patched ROM: `game-gxa.gba` loads `game-gxa.gxa`.
 
 ## 6. Test three ways
 
@@ -79,6 +90,10 @@ pack by the SHA-1 of the patched ROM if you release the ROM or a patch for one b
 | GXA emulator, full pack | your tracks play; the original music is not heard under them |
 | Same, with one mapped track removed from the pack | that scene plays its original music |
 | Emulator without GXA, or no pack | the game exactly as before |
+
+For the second run, copy the pack folder, delete one track from its `manifest.json`, and build it as a
+second pack. To check that the original music is really muted, build a pack whose tracks are silence: the
+mapped scenes must then be silent apart from sound effects.
 
 ## How the hook works
 
@@ -97,6 +112,10 @@ pack by the SHA-1 of the patched ROM if you release the ROM or a patch for one b
 - A missing or broken track reads `missing` or `error` at once (SPEC.md §3), and the original song is heard.
 
 ## Limits
+
+- **Frame timing.** While a GXA track plays, the muted m4a song mixes silence instead of instruments, which
+  costs the CPU a little less. Animations and anything counted in frames can shift by a frame against the
+  original game; the game's logic and scene flow stay the same.
 
 - **Fade-outs.** When the game fades its music out (`m4aMPlayFadeOut`), the GXA track keeps playing until
   the next song starts or stops. Map songs whose scenes end with a new song, or extend the hook to the fade

@@ -36,7 +36,8 @@ WAV and FLAC are encoded to Ogg Vorbis; Ogg files are copied as they are. Mono o
 ```
 
 - `tracks`: track id (as in your ROM) → file. `loop` is the sample frame a loop command returns to, in the
-  file's own rate; `gain` is in dB.
+  file's own rate; without it a loop starts over from the beginning. `gain` is in dB. Background music is
+  usually played with the loop command, so give BGM tracks a loop point.
 - `match`: which ROMs load this pack. Pick one:
 
 | Rule | Use it when |
@@ -45,7 +46,8 @@ WAV and FLAC are encoded to Ogg Vorbis; Ogg files are copied as they are. Mono o
 | `{"code": "...", "title": "..."}` + `version` | Your own ROM, where you bump the header's version byte (`0xBC`) on each release. `"version": 1` covers 1 and later. |
 
 The code is the 4 bytes at `0xAC` and the title the 12 bytes at `0xA0`. A hack keeps the original game's code
-and title, so it should match by `sha1`, or by `version` if it bumps the version byte.
+and title, so it should match by `sha1`, or by `version` if it bumps the version byte. Get the SHA-1 of the
+final ROM with `shasum -a 1 game.gba` (Windows: `certutil -hashfile game.gba SHA1`).
 
 ## 3. Build and inspect
 

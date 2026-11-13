@@ -240,3 +240,12 @@ def test_hook_template_assembles_and_patches(tmp_path):
         assert struct.unpack_from('<I', out, e + 4)[0] & 1 == 1                # a Thumb address
         assert struct.unpack_from('<I', out, e + 4)[0] - 0x08000000 >= len(rom)  # into the free space
     assert out[:want['m4aSongNumStart']] == rom[:want['m4aSongNumStart']]
+
+
+def test_cli_text_prints_player_reg_as_a_number(tmp_path):
+    rom, want = blob(player_reg=3)
+    (tmp_path / 'r.gba').write_bytes(rom)
+    r = subprocess.run([sys.executable, str(TOOL), str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    lines = r.stdout.splitlines()
+    assert 'player_reg                 r3' in lines
+    assert any(l.startswith('m4aSongNumStart ') and '(0x08' in l for l in lines)
