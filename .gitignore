@@ -4,3 +4,4 @@ docs/superpowers/
 .superpowers/
 .cache/
 examples/**/*.gxa
+asm/test/out/
