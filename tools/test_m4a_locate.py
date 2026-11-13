@@ -175,3 +175,68 @@ def test_changed_prologue_is_reported():
     got = m4a_locate.locate(bytes(d))
     problems = m4a_locate.hook_check(bytes(d), got)
     assert any('m4aSongNumStop' in p for p in problems)
+
+
+def test_cli_armips_defines(tmp_path):
+    rom, want = blob(player_reg=3)
+    rom = rom + b'\xFF' * 0x2000
+    (tmp_path / 'r.gba').write_bytes(rom)
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    lines = r.stdout.splitlines()
+    assert '.definelabel m4aSongNumStart, 0x%08X' % (0x08000000 + want['m4aSongNumStart']) in lines
+    assert '.definelabel MPlayStop, 0x%08X' % (0x08000000 + want['MPlayStop']) in lines
+    assert '.definelabel PlayerTable, 0x08000300' in lines
+    assert '.definelabel SongTable, 0x08000200' in lines
+    assert '.definelabel PLAYER_REG, 3' in lines
+    assert '.definelabel FreeSpace, 0x%08X' % (0x08000000 + 0x400) in lines
+
+
+def test_cli_armips_refuses_unhookable(tmp_path):
+    rom, want = blob()
+    d = bytearray(rom)
+    struct.pack_into('<H', d, want['m4aSongNumStop'], 0xB510)   # push {r4, lr}: not the stock prologue
+    (tmp_path / 'r.gba').write_bytes(bytes(d) + b'\xFF' * 0x2000)
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    assert r.returncode == 3 and 'm4aSongNumStop' in r.stderr
+
+
+def test_cli_song_reports_its_player(tmp_path):
+    rom, want = blob()
+    d = bytearray(rom)
+    struct.pack_into('<IHH', d, 0x200 + 8 * 3, 0x08000100, 5, 5)   # song 3 on player 5
+    (tmp_path / 'r.gba').write_bytes(bytes(d))
+    r = subprocess.run([sys.executable, str(TOOL), '--song', '3', str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == 'song 3: player 5 (header 0x08000100)'
+
+
+def test_cli_armips_extends_a_full_rom(tmp_path):
+    rom, want = blob()                      # no 0xFF run at the end
+    (tmp_path / 'r.gba').write_bytes(rom)
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert '.definelabel FreeSpace, 0x%08X' % (0x08000000 + len(rom)) in r.stdout.splitlines()
+    assert 'extends the ROM' in r.stdout
+
+
+@pytest.mark.skipif(not os.environ.get('ARMIPS'), reason='ARMIPS (path to armips) not set')
+def test_hook_template_assembles_and_patches(tmp_path):
+    rom, want = blob(player_reg=3)
+    (tmp_path / 'game.gba').write_bytes(rom + b'\xFF' * 0x4000)
+    defs = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'game.gba')],
+                          capture_output=True, text=True, check=True).stdout
+    (tmp_path / 'defs.asm').write_text(defs)
+    (tmp_path / 'main.asm').write_text('.gba\n.open "%s", "%s", 0x08000000\n.include "%s"\n'
+                                       '.definelabel BGM_PLAYER, 0\n.include "hook.asm"\n'
+                                       'gxa_song_tracks:\n.halfword 1, 1\n.halfword 0xFFFF\n.close\n'
+                                       % (tmp_path / 'game.gba', tmp_path / 'out.gba', tmp_path / 'defs.asm'))
+    ex = Path(__file__).resolve().parents[1] / 'examples' / 'binary-hook'
+    subprocess.run([os.environ['ARMIPS'], '-root', str(ex), str(tmp_path / 'main.asm')], check=True)
+    out = (tmp_path / 'out.gba').read_bytes()
+    for name in ('m4aSongNumStart', 'm4aSongNumStartOrChange', 'm4aSongNumStartOrContinue', 'm4aSongNumStop'):
+        e = want[name]
+        assert struct.unpack_from('<HH', out, e) == (0x4B00, 0x4718), name   # ldr r3, [pc]; bx r3
+        assert struct.unpack_from('<I', out, e + 4)[0] & 1 == 1                # a Thumb address
+        assert struct.unpack_from('<I', out, e + 4)[0] - 0x08000000 >= len(rom)  # into the free space
+    assert out[:want['m4aSongNumStart']] == rom[:want['m4aSongNumStart']]

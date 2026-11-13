@@ -11,6 +11,6 @@ if [ ! -x "$BIN" ]; then
 	rm -rf "$DIR"
 	git clone -q --depth 1 --branch "$VER" --recursive https://github.com/Kingcom/armips.git "$DIR" >&2
 	cmake -S "$DIR" -B "$DIR/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 >&2
-	cmake --build "$DIR/build" --target armips -j 4 >&2
+	cmake --build "$DIR/build" --target armips-bin -j 4 >&2
 fi
 echo "$BIN"

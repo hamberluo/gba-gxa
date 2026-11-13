@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: MIT
 """Finds the m4a (Sappy) sound engine's song functions in a GBA ROM, for hooking them (docs/guides/binary-m4a-hook.md).
 
-usage: m4a_locate.py [--json] [--free BYTES] rom.gba
+usage: m4a_locate.py [--json | --armips | --song N] [--free BYTES] rom.gba
 
 Prints ROM offsets (add 0x08000000 for the address) of m4aSongNumStart, m4aSongNumStartOrChange,
 m4aSongNumStartOrContinue, m4aSongNumStop, m4aSongNumContinue, MPlayStart, MPlayStop, the song table, and
 the last run of at least BYTES (default 4096) 0xFF bytes for new code. Exits 2 if the ROM is not an m4a game.
+--armips prints the addresses as armips .definelabel lines for examples/binary-hook/hook.asm, or exits 3 when
+the hook template does not fit this ROM. --song N prints song N's player index (for BGM_PLAYER).
 
 Method: the m4aSongNum* functions all begin by indexing the song table with the song number
 (n << 16 >> 13 = n * 8). Among them, the most frequent call target is MPlayStart; the one that only calls
@@ -176,6 +178,8 @@ def hook_check(rom, got):
 def main():
     a = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     a.add_argument('--json', action='store_true')
+    a.add_argument('--armips', action='store_true')
+    a.add_argument('--song', type=int)
     a.add_argument('--free', type=int, default=4096)
     a.add_argument('rom')
     args = a.parse_args()
@@ -185,8 +189,33 @@ def main():
     except LookupError as e:
         print('%s: %s' % (args.rom, e), file=sys.stderr)
         return 2
+    if args.song is not None:
+        at = out.get('song_table', -1) + 8 * args.song
+        if 'song_table' not in out or at + 8 > len(rom):
+            print('%s: no song %d' % (args.rom, args.song), file=sys.stderr)
+            return 2
+        header, player, _ = struct.unpack_from('<IHH', rom, at)
+        print('song %d: player %d (header 0x%08X)' % (args.song, player, header))
+        return 0
     fs = free_space(rom, args.free)
     problems = hook_check(rom, out)
+    if args.armips:
+        extend = not fs
+        if extend and ((len(rom) + 3) & ~3) + args.free > 32 << 20:
+            problems.append('no %d bytes of free space: the ROM is full at 32 MiB' % args.free)
+        if problems:
+            print('%s: %s' % (args.rom, '; '.join(problems)), file=sys.stderr)
+            return 3
+        print('; m4a_locate.py --armips %s' % args.rom.split('/')[-1])
+        for k in HOOKED + ('MPlayStart', 'MPlayStop'):
+            print('.definelabel %s, 0x%08X' % (k, out[k] + ROM_BASE))
+        print('.definelabel PlayerTable, 0x%08X' % (out['player_table'] + ROM_BASE))
+        print('.definelabel SongTable, 0x%08X' % (out['song_table'] + ROM_BASE))
+        print('.definelabel PLAYER_REG, %d' % out['player_reg'])
+        if extend:
+            print('; no 0xFF free space at the end: the patch extends the ROM past its end')
+        print('.definelabel FreeSpace, 0x%08X' % (((len(rom) + 3) & ~3 if extend else fs[0]) + ROM_BASE))
+        return 0
     if args.json:
         res = {k: '0x%X' % v for k, v in out.items()}
         res['free_space'] = ['0x%X' % fs[0], fs[1]] if fs else None

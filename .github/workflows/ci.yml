@@ -40,3 +40,16 @@ jobs:
       - run: sh asm/test/check.sh
       - run: sh examples/homebrew-bgm/build.sh
       - run: PY=python3 sh -c 'cd test-rom && arm-none-eabi-gcc -mcpu=arm7tdmi -mthumb -mthumb-interwork -O2 -ffreestanding -nostdlib -Wall -I../include -T gba.ld -o /tmp/rom.elf crt0.s main.c -lgcc'
+
+  armips:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libsndfile1 cmake g++
+      - run: pip install -r tools/requirements.txt
+      - run: echo "ARMIPS=$(sh tools/get_armips.sh)" >> "$GITHUB_ENV"
+      - run: sh asm/test/check.sh
+      - run: python -m pytest -q tools/test_m4a_locate.py

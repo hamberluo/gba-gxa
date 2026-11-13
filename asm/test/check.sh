@@ -17,6 +17,9 @@ python3 ../../tools/gba_header.py out/gxa-smoke.gba
 if [ -n "$ARMIPS" ]; then
 	printf '.gba\n.create "out/armips.bin", 0x08000000\n.include "../gxa.s"\n.close\n' > out/armips.asm
 	"$ARMIPS" out/armips.asm
-	echo "ok: armips"
+	arm-none-eabi-as -mthumb -mcpu=arm7tdmi -o out/gas.o ../gxa.s
+	arm-none-eabi-objcopy -O binary out/gas.o out/gas.bin
+	cmp out/gas.bin out/armips.bin || { echo "gxa.s: armips and GNU as disagree"; exit 1; }
+	echo "ok: armips (same bytes as GNU as)"
 fi
 echo "ok: gxa.s"

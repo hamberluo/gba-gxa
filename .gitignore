@@ -5,3 +5,4 @@ docs/superpowers/
 .cache/
 examples/**/*.gxa
 asm/test/out/
+examples/binary-hook/defs.asm
