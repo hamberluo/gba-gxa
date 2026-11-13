@@ -56,16 +56,16 @@ class Thumb:
             self.pc += 4
         self.lits = []
 
-    def song_fn(self, calls, cond=False):
+    def song_fn(self, calls, cond=False, player_reg=2):
         """push; n*8 into the song table; then bl each of calls (behind a compare when cond)."""
         entry = self.pc
         self.push_lr()
         self.lsls(0, 0, 16)
-        self.ldr_lit(2, 0x08000300)   # player table
+        self.ldr_lit(player_reg, 0x08000300)   # player table
         self.ldr_lit(1, 0x08000200)   # song table
         self.lsrs(0, 0, 13)
         self.adds(0, 0, 1)
-        self.ldrh4(3, 0)
+        self.ldrh4(5 - player_reg, 0)
         if cond:
             self.cmp(3, 2)
             self.bne(0)
@@ -77,22 +77,22 @@ class Thumb:
         return entry
 
 
-def blob():
+def blob(player_reg=2):
     a = Thumb()
     mplay_start, mplay_stop, mplay_continue = 0x380, 0x390, 0x3A0
     for at in (mplay_start, mplay_stop, mplay_continue):
         struct.pack_into('<HH', a.d, at, 0xB500, 0x4770)
     want = {
-        'm4aSongNumStart': a.song_fn([mplay_start]),
-        'm4aSongNumStartOrChange': a.song_fn([mplay_start, mplay_start], cond=True),
-        'm4aSongNumStartOrContinue': a.song_fn([mplay_start, mplay_continue], cond=True),
-        'm4aSongNumStop': a.song_fn([mplay_stop], cond=True),
-        'm4aSongNumContinue': a.song_fn([mplay_continue], cond=True),
+        'm4aSongNumStart': a.song_fn([mplay_start], player_reg=player_reg),
+        'm4aSongNumStartOrChange': a.song_fn([mplay_start, mplay_start], cond=True, player_reg=player_reg),
+        'm4aSongNumStartOrContinue': a.song_fn([mplay_start, mplay_continue], cond=True, player_reg=player_reg),
+        'm4aSongNumStop': a.song_fn([mplay_stop], cond=True, player_reg=player_reg),
+        'm4aSongNumContinue': a.song_fn([mplay_continue], cond=True, player_reg=player_reg),
     }
     # song table at 0x200: (header in ROM, player 0, 0) entries; player table at 0x300: RAM pointers
     for i in range(4):
         struct.pack_into('<IHH', a.d, 0x200 + 8 * i, 0x08000100, 0, 0)
-    struct.pack_into('<III', a.d, 0x300, 0x03007000, 0x03007100, 0x00000010)
+    struct.pack_into('<III', a.d, 0x300, 0x08007000, 0x08007100, 0x00000010)   # in some games the entries are not RAM pointers
     want.update(MPlayStart=mplay_start, MPlayStop=mplay_stop, song_table=0x200)
     return bytes(a.d), want
 
@@ -152,3 +152,26 @@ def test_lookalike_outside_the_library_is_ignored():
     got = m4a_locate.locate(bytes(a.d))
     for k, v in want.items():
         assert got[k] == v, k
+
+
+def test_player_table_and_stock_prologue():
+    rom, want = blob()
+    got = m4a_locate.locate(rom)
+    assert got['player_table'] == 0x300 and got['player_reg'] == 2
+    assert m4a_locate.hook_check(rom, got) == []
+
+
+def test_player_table_in_r3():
+    rom, want = blob(player_reg=3)
+    got = m4a_locate.locate(rom)
+    assert got['player_table'] == 0x300 and got['player_reg'] == 3
+    assert m4a_locate.hook_check(rom, got) == []
+
+
+def test_changed_prologue_is_reported():
+    rom, want = blob()
+    d = bytearray(rom)
+    struct.pack_into('<H', d, want['m4aSongNumStop'] + 2, 0x46C0)   # nop where lsls r0,r0,#16 was
+    got = m4a_locate.locate(bytes(d))
+    problems = m4a_locate.hook_check(bytes(d), got)
+    assert any('m4aSongNumStop' in p for p in problems)

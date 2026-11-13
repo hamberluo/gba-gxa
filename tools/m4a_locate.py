@@ -134,10 +134,43 @@ def locate(rom):
     start = out.get('m4aSongNumStart')
     if start is None:
         raise LookupError('found m4aSongNum* functions but not m4aSongNumStart')
-    table = [v - ROM_BASE for v in fns[start]['lits'] if is_song_table(rom, v - ROM_BASE)]
-    if table:
-        out['song_table'] = table[0]
+    p = prologue(rom, start)
+    if p:
+        out['player_reg'], out['player_table'], out['song_table'] = p
     return out
+
+
+HOOKED = ('m4aSongNumStart', 'm4aSongNumStartOrChange', 'm4aSongNumStartOrContinue', 'm4aSongNumStop')
+
+
+def prologue(rom, e):
+    """(player_reg, player_table, song_table) when e starts with the stock m4aSongNum* prologue, else None:
+
+        push {lr}; lsls r0, r0, #16; ldr rP, =player_table; ldr r1, =song_table
+        lsrs r0, r0, #13; adds r0, r0, r1; ldrh rQ, [r0, #4]      (P, Q = r2, r3 in either order)
+
+    The hook overwrites the first 8 bytes and re-runs them from these constants."""
+    pl, sl = h16(rom, e + 4), h16(rom, e + 6)
+    preg = (pl >> 8) & 7
+    if not (e % 4 == 0 and h16(rom, e) == 0xB500 and h16(rom, e + 2) == 0x0400 and (pl & 0xF800) == 0x4800
+            and preg in (2, 3) and (sl & 0xFF00) == 0x4900 and h16(rom, e + 8) == 0x0B40
+            and h16(rom, e + 10) == 0x1840 and h16(rom, e + 12) == (0x8880 | (5 - preg))):
+        return None
+    player, song = lit(rom, e + 4) - ROM_BASE, lit(rom, e + 6) - ROM_BASE
+    return (preg, player, song) if is_song_table(rom, song) else None
+
+
+def hook_check(rom, got):
+    """Problems that stop examples/binary-hook from patching this ROM; [] when it can."""
+    bad = []
+    want = prologue(rom, got['m4aSongNumStart']) if 'm4aSongNumStart' in got else None
+    for name in HOOKED:
+        e = got.get(name)
+        if e is None:
+            bad.append(name + ': not found')
+        elif prologue(rom, e) is None or prologue(rom, e) != want:
+            bad.append(name + ': entry is not the stock m4a prologue (or not 4-byte aligned)')
+    return bad
 
 
 def main():
@@ -153,14 +186,17 @@ def main():
         print('%s: %s' % (args.rom, e), file=sys.stderr)
         return 2
     fs = free_space(rom, args.free)
+    problems = hook_check(rom, out)
     if args.json:
         res = {k: '0x%X' % v for k, v in out.items()}
         res['free_space'] = ['0x%X' % fs[0], fs[1]] if fs else None
+        res['hook_problems'] = problems
         print(json.dumps(res, indent=1))
     else:
         for k, v in out.items():
             print('%-26s 0x%07X  (0x%08X)' % (k, v, v + ROM_BASE))
         print('%-26s %s' % ('free_space', '0x%07X, %d bytes' % fs if fs else 'none at the end of the ROM'))
+        print('hook: %s' % ('; '.join(problems) if problems else 'ok (examples/binary-hook fits this ROM)'))
     return 0
 
 
