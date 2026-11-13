@@ -27,11 +27,15 @@ Put GXA in front of that function, not next to every call. Do the same for the f
 
 void bgm_start(int song) {
     unsigned short track = track_for_song(song);   // 0 = this song stays on the GBA's own sound
-    if (track && gxa_has_pack()) {
-        gxa_loop(0, track);
-        if (gxa_started(0)) {
-            original_stop();                         // make sure the old music is not playing too
-            return;
+    if (gxa_has_pack()) {
+        if (track) {
+            gxa_loop(0, track);
+            if (gxa_started(0)) {
+                original_stop();                     // make sure the old music is not playing too
+                return;
+            }
+        } else {
+            gxa_stop(0);                             // unmapped song: the previous GXA track must not go on
         }
     }
     original_start(song);                            // no GXA, no pack, or the pack lacks this track
@@ -45,6 +49,21 @@ void bgm_stop(void) {
 }
 ```
 
+This is for your own engine, where nothing else looks at the music player. In an m4a decomp, game code
+checks the player (`gMPlayInfo_BGM.status`, for example to leave the title screen when its song ends), so
+do not skip the original song there: start it as before, then mute it. With the GXA track started:
+
+```c
+m4aSongNumStart(song);                               // the game's own song, as before
+if (gMPlayInfo_BGM.songHeader == gSongTable[song].header) {   // the player took it
+    gMPlayInfo_BGM.tone = gGxaSilentVoices;          // 128 ToneData entries of a silent sample
+}
+```
+
+Turn interrupts off (`REG_IME = 0`) around those lines so the sound driver does not start the song's
+instruments in between. [examples/binary-hook/hook.asm](../../examples/binary-hook/hook.asm) does the same
+in assembly, including the silent voice table and the pause and continue paths.
+
 Three rules make this safe everywhere:
 
 - **No GXA, no pack:** `gxa_has_pack()` is 0 on hardware, on emulators without GXA, and when the player has
@@ -53,7 +72,8 @@ Three rules make this safe everywhere:
   channel right after the play command; a missing track reads `missing | ended` at once (SPEC.md §3), so
   the check never waits.
 - **Stop both:** every path that stops or changes music must stop the GXA channel as well, or the old track
-  keeps playing under the new scene. Fade-outs can use `gxa_fade(0, 0, ms)`; a fade to 0 stops the channel.
+  keeps playing under the new scene: a song with no track, a stop, stop-all, a pause (pause the channel too)
+  and a fade-out (`gxa_fade(0, 0, ms)`; a fade to 0 stops the channel).
 
 ## 4. Choose track ids
 

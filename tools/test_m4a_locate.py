@@ -77,11 +77,25 @@ class Thumb:
         return entry
 
 
+ID = 0x68736D53
+
+
+def plant_mplay(d, stop, cont, cont_push=False):
+    """The real library's first instructions of MPlayStop and MPlayContinue, with their ID literal."""
+    struct.pack_into('<HHHHHH', d, stop, 0xB570, 0x1C06, 0x6B71, 0x4800 | 1, 0x4281, 0x4770)   # ldr r0, [pc, #4]
+    struct.pack_into('<I', d, stop + 0x0C, ID)
+    ops = ([0xB500] if cont_push else []) + [0x1C02, 0x6B53, 0x4800 | 1, 0x4283, 0x4770]
+    for i, op in enumerate(ops):
+        struct.pack_into('<H', d, cont + 2 * i, op)
+    lit = ((cont + 2 * ops.index(0x4801) + 4) & ~3) + 4
+    struct.pack_into('<I', d, lit, ID)
+
+
 def blob(player_reg=2):
     a = Thumb()
     mplay_start, mplay_stop, mplay_continue = 0x380, 0x390, 0x3A0
-    for at in (mplay_start, mplay_stop, mplay_continue):
-        struct.pack_into('<HH', a.d, at, 0xB500, 0x4770)
+    struct.pack_into('<HH', a.d, mplay_start, 0xB500, 0x4770)
+    plant_mplay(a.d, mplay_stop, mplay_continue)
     want = {
         'm4aSongNumStart': a.song_fn([mplay_start], player_reg=player_reg),
         'm4aSongNumStartOrChange': a.song_fn([mplay_start, mplay_start], cond=True, player_reg=player_reg),
@@ -114,10 +128,16 @@ def test_cli_json_is_rom_offsets(tmp_path):
     assert 'free_space' in got
 
 
-def test_free_space_is_last_ff_run():
+def test_free_space_is_last_ff_run_after_a_margin():
     rom = bytes(0x1000) + b'\xFF' * 0x2000
-    assert m4a_locate.free_space(rom, 0x1000) == (0x1000, 0x2000)
-    assert m4a_locate.free_space(rom, 0x4000) is None
+    assert m4a_locate.free_space(rom, 0x1000) == (0x1100, 0x1F00)
+    assert m4a_locate.free_space(rom, 0x2000) is None
+
+
+def test_free_space_keeps_data_that_ends_in_ff():
+    rom = bytes(0x1000) + b'\x12\xFF\xFF\xFF' + b'\xFF' * 0x2000   # a table ended by 0xFFFF, a tile of colour 15
+    start, size = m4a_locate.free_space(rom, 0x100)
+    assert start >= 0x1001 + 0x100 and start % 0x100 == 0
 
 
 def test_not_m4a(tmp_path):
@@ -189,7 +209,7 @@ def test_cli_armips_defines(tmp_path):
     assert '.definelabel PlayerTable, 0x08000300' in lines
     assert '.definelabel SongTable, 0x08000200' in lines
     assert '.definelabel PLAYER_REG, 3' in lines
-    assert '.definelabel FreeSpace, 0x%08X' % (0x08000000 + 0x400) in lines
+    assert '.definelabel FreeSpace, 0x%08X' % (0x08000000 + 0x500) in lines   # 0x100 after the data
 
 
 def test_cli_armips_refuses_unhookable(tmp_path):
@@ -234,8 +254,9 @@ def test_hook_template_assembles_and_patches(tmp_path):
     ex = Path(__file__).resolve().parents[1] / 'examples' / 'binary-hook'
     subprocess.run([os.environ['ARMIPS'], '-root', str(ex), str(tmp_path / 'main.asm')], check=True)
     out = (tmp_path / 'out.gba').read_bytes()
-    for name in ('m4aSongNumStart', 'm4aSongNumStartOrChange', 'm4aSongNumStartOrContinue', 'm4aSongNumStop'):
-        e = want[name]
+    for name in ('m4aSongNumStart', 'm4aSongNumStartOrChange', 'm4aSongNumStartOrContinue', 'm4aSongNumStop',
+                 'MPlayStop', 'MPlayContinue'):
+        e = want[name] if name != 'MPlayContinue' else 0x3A0
         assert struct.unpack_from('<HH', out, e) == (0x4B00, 0x4718), name   # ldr r3, [pc]; bx r3
         assert struct.unpack_from('<I', out, e + 4)[0] & 1 == 1                # a Thumb address
         assert struct.unpack_from('<I', out, e + 4)[0] - 0x08000000 >= len(rom)  # into the free space
@@ -270,3 +291,27 @@ def test_cli_song_with_armips_is_refused(tmp_path):
     r = subprocess.run([sys.executable, str(TOOL), '--armips', '--song', '2', str(tmp_path / 'r.gba')],
                        capture_output=True, text=True)
     assert r.returncode != 0 and r.stdout == ''
+
+
+def test_mplay_prologues_are_checked():
+    rom, want = blob()
+    got = m4a_locate.locate(rom)
+    assert got['MPlayContinue'] == 0x3A0
+    assert m4a_locate.hook_check(rom, got) == []
+    assert m4a_locate.continue_push(rom, got['MPlayContinue']) is False
+    d = bytearray(rom)
+    struct.pack_into('<H', d, want['MPlayStop'] + 2, 0x46C0)
+    assert any('MPlayStop' in p for p in m4a_locate.hook_check(bytes(d), m4a_locate.locate(bytes(d))))
+
+
+def test_mplay_continue_with_push(tmp_path):
+    rom, want = blob()
+    d = bytearray(rom)
+    plant_mplay(d, want['MPlayStop'], 0x3A0, cont_push=True)
+    got = m4a_locate.locate(bytes(d))
+    assert m4a_locate.hook_check(bytes(d), got) == []
+    assert m4a_locate.continue_push(bytes(d), 0x3A0) is True
+    (tmp_path / 'r.gba').write_bytes(bytes(d) + b'\xFF' * 0x2000)
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    assert '.definelabel CONTINUE_PUSH, 1' in r.stdout.splitlines()
+    assert '.definelabel MPlayContinue, 0x080003A0' in r.stdout.splitlines()

@@ -6,3 +6,4 @@ docs/superpowers/
 examples/**/*.gxa
 asm/test/out/
 examples/binary-hook/defs.asm
+examples/binary-hook/test/out/

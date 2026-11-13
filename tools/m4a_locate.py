@@ -94,10 +94,12 @@ def is_song_table(rom, off):
 
 
 def free_space(rom, need):
-    """(offset, length) of the 0xFF run that ends the ROM, if at least need bytes, else None."""
+    """(offset, length) of the 0xFF run that ends the ROM, if at least need bytes, else None.
+
+    The run starts 0x100 bytes after the last byte that is not 0xFF, rounded up to 0x100: data may itself end
+    in 0xFF bytes (a 0xFFFF terminator, a tile of colour 15), and those must not be overwritten."""
     end = len(rom)
-    start = len(rom.rstrip(b'\xFF'))
-    start = (start + 3) & ~3
+    start = (len(rom.rstrip(b'\xFF')) + 0x100 + 0xFF) & ~0xFF
     return (start, end - start) if end - start >= need else None
 
 
@@ -163,9 +165,34 @@ def prologue(rom, e):
     return (preg, player, song) if is_song_table(rom, song) else None
 
 
+M4A_ID = 0x68736D53
+
+
+def stop_prologue_ok(rom, e):
+    """MPlayStop starts push {r4-r6, lr}; adds r6, r0, #0; ldr r1, [r6, #0x34]; ldr r0, =ID."""
+    return (e % 4 == 0 and h16(rom, e) == 0xB570 and h16(rom, e + 2) == 0x1C06 and h16(rom, e + 4) == 0x6B71
+            and (h16(rom, e + 6) & 0xFF00) == 0x4800 and lit(rom, e + 6) == M4A_ID)
+
+
+def continue_push(rom, e):
+    """MPlayContinue starts [push {lr};] adds r2, r0, #0; ldr r3, [r2, #0x34]; ldr r0, =ID; cmp r3, r0.
+    True / False for the form with / without the push, None for neither."""
+    if e % 4:
+        return None
+    for push, at in ((True, e + 2), (False, e)):
+        if (h16(rom, e) == 0xB500) == push and h16(rom, at) == 0x1C02 and h16(rom, at + 2) == 0x6B53 \
+                and (h16(rom, at + 4) & 0xFF00) == 0x4800 and lit(rom, at + 4) == M4A_ID and h16(rom, at + 6) == 0x4283:
+            return push
+    return None
+
+
 def hook_check(rom, got):
     """Problems that stop examples/binary-hook from patching this ROM; [] when it can."""
     bad = []
+    if 'MPlayStop' not in got or not stop_prologue_ok(rom, got['MPlayStop']):
+        bad.append('MPlayStop: not found, or not the stock m4a prologue')
+    if 'MPlayContinue' not in got or continue_push(rom, got['MPlayContinue']) is None:
+        bad.append('MPlayContinue: not found, or not the stock m4a prologue')
     want = prologue(rom, got['m4aSongNumStart']) if 'm4aSongNumStart' in got else None
     for name in HOOKED:
         e = got.get(name)
@@ -212,8 +239,9 @@ def main():
             print('%s: %s' % (args.rom, '; '.join(problems)), file=sys.stderr)
             return 3
         print('; m4a_locate.py --armips %s' % args.rom.split('/')[-1])
-        for k in HOOKED + ('MPlayStart', 'MPlayStop'):
+        for k in HOOKED + ('MPlayStart', 'MPlayStop', 'MPlayContinue'):
             print('.definelabel %s, 0x%08X' % (k, out[k] + ROM_BASE))
+        print('.definelabel CONTINUE_PUSH, %d' % continue_push(rom, out['MPlayContinue']))
         print('.definelabel PlayerTable, 0x%08X' % (out['player_table'] + ROM_BASE))
         print('.definelabel SongTable, 0x%08X' % (out['song_table'] + ROM_BASE))
         print('.definelabel PLAYER_REG, %d' % out['player_reg'])

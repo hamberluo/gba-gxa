@@ -106,8 +106,8 @@ time.
 
 ## How the hook works
 
-- The first 8 bytes of `m4aSongNumStart`, `...OrChange`, `...OrContinue` and `m4aSongNumStop` become a jump
-  to new code in free space. `m4a_locate.py` checks that these 8 bytes are the stock m4a prologue, and the
+- The first 8 bytes of `m4aSongNumStart`, `...OrChange`, `...OrContinue`, `m4aSongNumStop`, `MPlayStop` and
+  `MPlayContinue` become a jump to new code in free space. `m4a_locate.py` checks that these 8 bytes are the stock m4a prologue, and the
   hook re-runs them exactly when it falls back.
 - Without GXA or without a pack, the hook runs the original function at once.
 - The game's own song **always starts**, so anything the game checks about its music (is it playing, has it
@@ -119,15 +119,23 @@ time.
   that already plays. A song on another player plays once on channel 1, for voice lines and jingles.
 - An unmapped song on the BGM player stops channel 0, so old GXA music never plays under new game music.
 - A missing or broken track reads `missing` or `error` at once (SPEC.md §3), and the original song is heard.
+- When the game pauses its BGM player (`MPlayStop`, for a jingle on another player) and continues it, GXA
+  channel 0 pauses and resumes with it. A song the player refuses because a higher-priority song is playing
+  changes nothing on GXA either.
+- Interrupts are off from the original call until the player is muted, so the sound driver never starts the
+  song's instruments in between.
 
 ## Limits
 
 - **Frame timing.** While a GXA track plays, the muted m4a song mixes silence instead of instruments, which
-  costs the CPU a little less. Animations and anything counted in frames can shift by a frame against the
-  original game; the game's logic and scene flow stay the same.
+  costs the CPU a little less. Animations and anything counted in frames, such as a frame-based random
+  number, can shift by a frame against the original game. Scene flow stayed the same in every game we tested.
+- **One-shot music on the BGM player.** BGM tracks always loop on GXA. A jingle or ending theme that plays
+  once on the BGM player keeps looping on GXA after the game's own song ends; leave such songs unmapped.
+- **Track 0.** The table uses 0 for "no track", so map songs to track ids 1–65535.
 
 - **Fade-outs.** When the game fades its music out (`m4aMPlayFadeOut`), the GXA track keeps playing until
-  the next song starts or stops. Map songs whose scenes end with a new song, or extend the hook to the fade
+  the next song starts or stops, or the game pauses the player. Map songs whose scenes end with a new song, or extend the hook to the fade
   function of your game.
 - **Modified m4a.** Decomp-based hacks often change the m4a library; `m4a_locate.py` then refuses. Add GXA in
   C instead.

@@ -27,11 +27,15 @@ agbcc（pret 系 decomp 项目用的编译器）都能编译。
 
 void bgm_start(int song) {
     unsigned short track = track_for_song(song);   // 0 = 这首歌继续用 GBA 自己的声音
-    if (track && gxa_has_pack()) {
-        gxa_loop(0, track);
-        if (gxa_started(0)) {
-            original_stop();                         // 确保原来的音乐没有同时在播
-            return;
+    if (gxa_has_pack()) {
+        if (track) {
+            gxa_loop(0, track);
+            if (gxa_started(0)) {
+                original_stop();                     // 确保原来的音乐没有同时在播
+                return;
+            }
+        } else {
+            gxa_stop(0);                             // 没映射的歌：之前的 GXA 曲目不能继续播
         }
     }
     original_start(song);                            // 没有 GXA、没有 pack，或 pack 里没有这首
@@ -45,14 +49,27 @@ void bgm_stop(void) {
 }
 ```
 
+这段写法适用于你自己写的引擎，也就是没有别的代码会去查询音乐播放器的情况。在 m4a 的 decomp 里，游戏代码会检查播放器状态
+（比如 `gMPlayInfo_BGM.status`：标题曲播完就离开标题画面），所以不能跳过原曲，而是照常开始播放，再把它静音。GXA 曲目开始播放后：
+
+```c
+m4aSongNumStart(song);                               // 游戏自己的歌，照常开始
+if (gMPlayInfo_BGM.songHeader == gSongTable[song].header) {   // 播放器接受了这首歌
+    gMPlayInfo_BGM.tone = gGxaSilentVoices;          // 128 个 ToneData，全部指向一个静音采样
+}
+```
+
+这几行前后要关中断（`REG_IME = 0`），避免声音驱动在中间先把这首歌的乐器加载进去。
+[examples/binary-hook/hook.asm](../../examples/binary-hook/hook.asm) 用汇编做了同样的事，包括静音音色表，以及暂停和继续的处理。
+
 遵守下面三条，在任何环境下都不会出问题：
 
 - **没有 GXA 或没有 pack**：在真机上、在不支持 GXA 的模拟器里、或者玩家没加载 pack 时，`gxa_has_pack()` 都返回 0，
   游戏和原来完全一样。
 - **缺曲目**：pack 可能比 ROM 旧，也可能故意少放几首。`gxa_started()` 在播放命令之后立刻读通道状态；缺失的曲目会立刻读到
   `missing | ended`（SPEC.md §3），所以这个检查不会等待。
-- **两边都要停**：所有停止或切换音乐的路径都要同时停掉 GXA 通道，否则旧曲目会在新场景底下继续播。淡出可以用
-  `gxa_fade(0, 0, ms)`，音量淡到 0 时通道会自动停止。
+- **两边都要停**：所有停止或切换音乐的路径都要同时停掉 GXA 通道，否则旧曲目会在新场景底下继续播：没映射的歌、停止、全部停止、
+  暂停（GXA 通道也要暂停），以及淡出（用 `gxa_fade(0, 0, ms)`，音量淡到 0 时通道会自动停止）。
 
 ## 4. 选择曲目 id
 

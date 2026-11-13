@@ -12,7 +12,7 @@ voice lines, arranged music, better sound effects. This file is your map. Follow
 |---|---|---|
 | The game's C source (homebrew, or a decomp such as pret's) | C | [include/gxa.h](include/gxa.h), [docs/guides/c-source.md](docs/guides/c-source.md), [examples/homebrew-bgm](examples/homebrew-bgm) |
 | Only the ROM, and `python3 tools/m4a_locate.py rom.gba` finds the m4a functions | Binary hook | [asm/gxa.s](asm/gxa.s), [docs/guides/binary-m4a-hook.md](docs/guides/binary-m4a-hook.md), [examples/binary-hook](examples/binary-hook) |
-| Only the ROM, and `m4a_locate.py` exits 2 | Neither guide fits | Tell the person: the game does not use the stock m4a engine. Finding its sound driver's entry points is reverse-engineering work the guides do not cover. |
+| Only the ROM, and `m4a_locate.py` exits 2, or its last line is not `hook: ok` | Neither guide fits | Tell the person: the game does not use the stock m4a engine. Finding its sound driver's entry points is reverse-engineering work the guides do not cover. |
 
 3. [docs/guides/making-a-pack.md](docs/guides/making-a-pack.md) for the pack.
 
@@ -26,7 +26,8 @@ The ROM will also run on hardware and on emulators without GXA. Breaking those i
   `gxa_play_track`). A missing or broken track must play the original sound.
 - **Stop on every stop path.** Whatever stops or changes the music (song stop, stop-all, fade-out, scene
   change, a new song starting) must also stop the GXA channel. Otherwise two musics play at once. The binary
-  hook covers song starts and stops but not fade-outs; tell the person (see the guide's Limits).
+  hook covers song starts, stops, and pausing/continuing the BGM player, but not fade-outs; tell the person
+  (see the guide's Limits).
 - **Keep the game's own state.** Do not skip or stop the original song when GXA plays instead; mute it
   (the binary hook swaps in a silent voice table). Games poll their music player: one went back to its
   intro when the title song looked stopped.
