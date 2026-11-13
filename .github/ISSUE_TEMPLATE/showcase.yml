@@ -1,0 +1,32 @@
+name: Showcase
+description: List a game, hack or homebrew that uses GXA / 登记使用 GXA 的游戏、hack 或 homebrew
+labels: [showcase]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Work / 作品名
+    validations:
+      required: true
+  - type: input
+    id: author
+    attributes:
+      label: Author / 作者
+    validations:
+      required: true
+  - type: input
+    id: use
+    attributes:
+      label: What GXA does in it / GXA 在作品里做什么
+      description: e.g. voiced story, arranged BGM / 例如剧情配音、重编曲 BGM
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Release page / 发布页
+      description: Your own release page; no ROM downloads of commercial games / 你自己的发布页，不要放商业游戏 ROM 下载
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshot or video / 截图或视频

@@ -1,0 +1,30 @@
+name: Spec change
+description: Propose a change or addition to SPEC.md / 提议修改或扩展 SPEC.md
+labels: [spec-change]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 要解决的问题
+      description: What ROMs or emulators cannot do today / 现在的 ROM 或模拟器做不到什么
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal / 方案
+      description: New registers, commands or pack fields, with exact offsets and values / 新的寄存器、命令或 pack 字段，写明偏移和取值
+    validations:
+      required: true
+  - type: textarea
+    id: compat
+    attributes:
+      label: Compatibility / 兼容性
+      description: What existing GXA 1.0 ROMs and emulators see after this change / 现有 GXA 1.0 ROM 和模拟器在改动后会遇到什么
+    validations:
+      required: true
+  - type: input
+    id: impl
+    attributes:
+      label: Implementation / 实现
+      description: Link to an emulator branch implementing it, if any / 如已有实现，给出模拟器分支链接

@@ -1,0 +1,30 @@
+name: Emulator support
+description: List an emulator that implements GXA / 登记一个实现了 GXA 的模拟器
+labels: [emulator]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Emulator and version / 模拟器及版本
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Source or release link / 源码或发布链接
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: GXA version / GXA 版本
+      options: ["1.0"]
+    validations:
+      required: true
+  - type: textarea
+    id: shot
+    attributes:
+      label: Conformance screenshot / Conformance 截图
+      description: test-rom/gxa-conformance.gba with its pack, every row green / 带 pack 运行，每行都是绿色
+    validations:
+      required: true

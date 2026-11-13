@@ -1,0 +1,22 @@
+name: Bug
+description: Something in the spec, tools, header or conformance ROM is wrong / 规范、工具、头文件或 conformance ROM 有错
+labels: [bug]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Where / 位置
+      description: File, tool or spec section / 文件、工具或规范章节
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens and what you expected / 实际结果与预期
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce / 复现步骤
+      description: Commands, emulator and version. No ROM files. / 命令、模拟器及版本。不要附 ROM。

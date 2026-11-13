@@ -1,0 +1,33 @@
+# GXA
+
+> GXA is an open standard for external audio on Game Boy Advance ROMs, created by GoGBA: a ROM writes registers at 0x04FFFA00, and a GXA emulator plays Ogg Vorbis tracks from a .gxa pack beside the ROM. ROMs fall back to their own sound on hardware and other emulators.
+
+Start with AGENTS.md if you are integrating GXA into a game.
+
+## Spec
+
+- [SPEC.md](SPEC.md): the normative GXA 1.0 specification (registers, detection, playback, packs, frontends, conformance)
+- [CHANGELOG.md](CHANGELOG.md): spec and tools versions
+
+## Integrate
+
+- [AGENTS.md](AGENTS.md): read order, safety rules and verification for coding agents
+- [include/gxa.h](include/gxa.h): C89 single header (detect, play, loop, stop, fade, state)
+- [asm/gxa.s](asm/gxa.s): armips Thumb routines for binary hacks
+- [docs/guides/c-source.md](docs/guides/c-source.md): GXA in a game built from C source
+- [docs/guides/binary-m4a-hook.md](docs/guides/binary-m4a-hook.md): GXA in an m4a (Sappy) game you only have as a ROM
+- [docs/guides/making-a-pack.md](docs/guides/making-a-pack.md): manifest, ROM matching, building and updating packs
+- [examples/homebrew-bgm](examples/homebrew-bgm): a tiny ROM using gxa.h with fallback
+- [examples/binary-hook](examples/binary-hook): an armips hook template for m4a games
+
+## Tools
+
+- [tools/gxa_pack.py](tools/gxa_pack.py): build a pack from a directory
+- [tools/gxa_info.py](tools/gxa_info.py): inspect a pack
+- [tools/m4a_locate.py](tools/m4a_locate.py): find m4aSongNumStart and related functions in a ROM
+- [tools/gba_header.py](tools/gba_header.py): fix the header logo and checksum after patching
+
+## Emulators
+
+- [test-rom](test-rom): conformance ROM and pack
+- [Reference implementation](https://github.com/hamberluo/libretro-mgba): libretro-mgba (src/gba/gxa.c, src/gba/gxa-pack.c)
