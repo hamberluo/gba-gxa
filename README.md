@@ -15,8 +15,6 @@ The standard is [SPEC.md](SPEC.md) (GXA 1.0).
 
 The Langrisser II voice hack runs on GoGBA with fully voiced story scenes from a GXA pack.
 
-![conformance ROM: every row green](test-rom/conformance.png)
-
 ## Where to start
 
 | You are | Read |
@@ -36,6 +34,8 @@ every emulator, and how to verify the result.
 | Emulator | GXA | Conformance |
 |---|---|---|
 | [GoGBA](https://gogba.xyz/) (iOS, Android), core: [libretro-mgba](https://github.com/hamberluo/libretro-mgba) | 1.0 | all pass |
+
+![conformance ROM on GoGBA's core: every row green](test-rom/conformance.png)
 
 Implemented GXA? Open an [emulator support issue](https://github.com/hamberluo/gba-gxa/issues/new?template=emulator-support.yml)
 with a screenshot of the conformance ROM.

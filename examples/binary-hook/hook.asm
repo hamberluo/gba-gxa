@@ -17,10 +17,10 @@
 ;   - a song that maps to a track, on the BGM player: GXA channel 0 loops the track; the m4a song is muted.
 ;     ...OrChange / ...OrContinue do not restart channel 0 when it already plays that track;
 ;   - a song on the BGM player with no track: channel 0 stops, the original song is heard;
-;   - a song that maps to a track, on another player: channel 1 plays it once (voice, jingles), the m4a song
-;     is muted;
+;   - a song that maps to a track, on another player: channel 1 + player % 3 plays it once (voice, jingles),
+;     the m4a song is muted; an unmapped song on that player stops that channel;
 ;   - a missing or broken track: the original song is heard;
-;   - m4aSongNumStop of a mapped song: the channel playing its track stops;
+;   - m4aSongNumStop of a mapped song: every channel playing its track stops;
 ;   - MPlayStop / MPlayContinue on the BGM player: channel 0 pauses / resumes with it;
 ;   - a song the player refuses (lower priority than the one playing): GXA does nothing.
 ; Without GXA or without a pack, nothing changes.
@@ -61,7 +61,7 @@
 name:
 	push	{r4-r7, lr}
 	mov	r4, r0			; song
-	bl	gxa_detect
+	bl	gxa_has_pack
 	cmp	r0, #0
 	beq	@@plain
 	mov	r0, r4
@@ -118,9 +118,19 @@ name:
 	bl	gxa_mute
 	b	@@restore
 @@other:
+	mov	r0, r6			; channel 1 + player % 3
+@@mod:
+	cmp	r0, #3
+	blt	@@chan
+	sub	r0, #3
+	b	@@mod
+@@chan:
+	add	r0, #1
 	cmp	r5, #0
-	beq	@@restore
-	mov	r0, #1
+	bne	@@once
+	bl	gxa_stop		; unmapped: the player's GXA sound stops, as its m4a song would
+	b	@@restore
+@@once:
 	mov	r1, r5
 	mov	r2, #0
 	bl	gxa_play_track
@@ -158,29 +168,30 @@ gxa_start_hook gxa_hook_start_or_change, m4aSongNumStartOrChange, 1
 gxa_start_hook gxa_hook_start_or_continue, m4aSongNumStartOrContinue, 1
 
 gxa_hook_stop:
-	push	{r4, lr}
+	push	{r4, r5, lr}
 	mov	r4, r0
-	bl	gxa_detect
+	bl	gxa_has_pack
 	cmp	r0, #0
 	beq	@@original
 	mov	r0, r4
 	bl	gxa_lookup
 	cmp	r0, #0
 	beq	@@original
-	ldr	r3, =0x04FFFA10
+	ldr	r3, =0x04FFFA10		; stop every channel that plays its track
 	mov	r2, #3			; stop
-	ldrh	r1, [r3, #0x00]		; channel 0 TRACK
-	cmp	r1, r0
-	bne	@@ch1
-	strh	r2, [r3, #0x02]
-@@ch1:
-	ldrh	r1, [r3, #0x10]		; channel 1 TRACK
-	cmp	r1, r0
-	bne	@@original
-	strh	r2, [r3, #0x12]
+	mov	r1, #4
+@@channel:
+	ldrh	r5, [r3, #0]		; TRACK
+	cmp	r5, r0
+	bne	@@next_channel
+	strh	r2, [r3, #2]
+@@next_channel:
+	add	r3, #0x10
+	sub	r1, #1
+	bne	@@channel
 @@original:
 	mov	r0, r4
-	pop	{r4}
+	pop	{r4, r5}
 	pop	{r3}
 	mov	lr, r3
 	gxa_reenter m4aSongNumStop
@@ -237,7 +248,7 @@ gxa_bgm_follow:
 	mov	r4, r0
 	mov	r5, r1
 	mov	r6, r2
-	bl	gxa_detect
+	bl	gxa_has_pack
 	cmp	r0, #0
 	beq	@@out
 	ldr	r0, =PlayerTable + BGM_PLAYER * 12

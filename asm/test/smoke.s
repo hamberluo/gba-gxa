@@ -7,7 +7,7 @@
 	.thumb_func
 main:
 	push	{r4, lr}
-	bl	gxa_detect
+	bl	gxa_has_pack
 	mov	r4, r0
 	cmp	r0, #0
 	beq	smoke_report

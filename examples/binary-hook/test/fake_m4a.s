@@ -3,25 +3,27 @@
  * The song functions, MPlayStop and MPlayContinue begin with the same instructions as the real library
  * (what m4a_locate.py looks for and hook.asm relocates); their bodies only keep the state the test needs:
  * MPlayStart refuses a song of lower priority than a playing one, MPlayStop/MPlayContinue set and clear
- * the pause bit. Songs: 1 (player 0, priority 0), 2 (player 0, priority 10), 3 (player 0, priority 0).
+ * the pause bit. Songs: 1 (player 0, priority 0), 2 (player 0, priority 10), 3 (player 0, priority 0),
+ * 4 and 5 (player 1).
  *
- * main runs a script, one step every 30 frames, and reports through GXA channel 3's TRACK register
- * (0x100 | step) and, at the end, 0x200 | (player 0's voice table is song 2's own: 1 = not muted).
+ * main runs a script, one step every 30 frames: it writes the step number to GXA channel 3's TRACK register
+ * (0x100 | step), waits a frame, then acts. Step 10 reports 0x200 | bits: 1 = player 0's voice table is
+ * song 2's own (not muted), 2 = player 1 was paused by the original m4aSongNumStop.
  */
 	.thumb
 	.equ	ID, 0x68736D53
 	.equ	INFO0, 0x02000200
+	.equ	INFO1, 0x02000300
 	.equ	VCOUNT, 0x04000006
 
 	.global	main
 	.thumb_func
 main:
-	ldr	r0, =INFO0
 	ldr	r1, =ID
+	ldr	r0, =INFO0
 	str	r1, [r0, #0x34]		/* ident */
-	mov	r1, #0
-	str	r1, [r0, #0]
-	str	r1, [r0, #4]
+	ldr	r0, =INFO1
+	str	r1, [r0, #0x34]
 	mov	r0, #1
 	bl	step			/* 1: start song 1 */
 	mov	r0, #1
@@ -42,7 +44,25 @@ main:
 	bl	step			/* 5: start song 3 (priority 0, mapped): MPlayStart refuses it */
 	mov	r0, #3
 	bl	m4aSongNumStart
-	ldr	r0, =INFO0		/* report: is the voice table still song 2's? */
+	mov	r0, #6
+	bl	step			/* 6: song 4 on player 1 (a voice line, mapped) */
+	mov	r0, #4
+	bl	m4aSongNumStart
+	mov	r0, #7
+	bl	step			/* 7: song 5 on player 1 (unmapped) interrupts it */
+	mov	r0, #5
+	bl	m4aSongNumStart
+	mov	r0, #8
+	bl	step			/* 8: song 4 again */
+	mov	r0, #4
+	bl	m4aSongNumStart
+	mov	r0, #9
+	bl	step			/* 9: m4aSongNumStop(4) */
+	mov	r0, #4
+	bl	m4aSongNumStop
+	mov	r0, #10
+	bl	step			/* 10: report */
+	ldr	r0, =INFO0		/* bit 0: is player 0's voice table still song 2's? */
 	ldr	r1, [r0, #0x30]
 	ldr	r2, =song2
 	ldr	r2, [r2, #4]
@@ -50,18 +70,38 @@ main:
 	cmp	r1, r2
 	bne	1f
 	mov	r3, #1
-1:	mov	r0, #2
+1:	ldr	r0, =INFO1		/* bit 1: did the original m4aSongNumStop(4) pause player 1? */
+	ldr	r1, [r0, #4]
+	lsr	r1, r1, #31
+	lsl	r1, r1, #1
+	orr	r3, r1
+	mov	r0, #2
 	lsl	r0, r0, #8
 	orr	r0, r3
 	ldr	r1, =0x04FFFA40
 	strh	r0, [r1]
 2:	b	2b
 
-/* waits 30 frames, then reports step r0 in channel 3's TRACK */
+/* waits 30 frames, reports step r0 in channel 3's TRACK, then waits one more frame */
 	.thumb_func
 step:
 	push	{r4, lr}
 	mov	r4, #30
+	bl	frames
+	mov	r1, #1
+	lsl	r1, r1, #8
+	orr	r0, r1
+	ldr	r1, =0x04FFFA40
+	strh	r0, [r1]
+	mov	r4, #1
+	bl	frames
+	pop	{r4}
+	pop	{r0}
+	bx	r0
+
+/* waits r4 frames; keeps r0 */
+	.thumb_func
+frames:
 1:	ldr	r1, =VCOUNT
 2:	ldrh	r2, [r1]
 	cmp	r2, #160
@@ -71,14 +111,7 @@ step:
 	blt	3b
 	sub	r4, #1
 	bne	1b
-	mov	r1, #1
-	lsl	r1, r1, #8
-	orr	r0, r1
-	ldr	r1, =0x04FFFA40
-	strh	r0, [r1]
-	pop	{r4}
-	pop	{r0}
-	bx	r0
+	bx	lr
 	.pool
 
 /* ---- the library ---- */
@@ -277,6 +310,10 @@ songs:
 	.hword	0, 0
 	.word	song3
 	.hword	0, 0
+	.word	song4
+	.hword	1, 1
+	.word	song5
+	.hword	1, 1
 song0:	.byte	1, 0, 0, 0
 	.word	voices0
 song1:	.byte	1, 0, 0, 0
@@ -285,6 +322,12 @@ song2:	.byte	1, 0, 10, 0
 	.word	voices2
 song3:	.byte	1, 0, 0, 0
 	.word	voices3
+song4:	.byte	1, 0, 0, 0
+	.word	voices4
+song5:	.byte	1, 0, 0, 0
+	.word	voices5
+voices4: .word 4
+voices5: .word 5
 voices0: .word 0
 voices1: .word 1
 voices2: .word 2

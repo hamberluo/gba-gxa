@@ -21,7 +21,7 @@ voice lines, arranged music, better sound effects. This file is your map. Follow
 The ROM will also run on hardware and on emulators without GXA. Breaking those is the worst outcome.
 
 - **Detect first.** Touch no other GXA register before the handshake passes (`gxa_has_pack()`, or
-  `gxa_detect` in `asm/gxa.s`). Without GXA, run the original code path unchanged.
+  `gxa_has_pack` in `asm/gxa.s`; both mean GXA is there and a pack is loaded). Without GXA, run the original code path unchanged.
 - **Fall back per track.** After a play command, check that it started (`gxa_started()`, or r0 from
   `gxa_play_track`). A missing or broken track must play the original sound.
 - **Stop on every stop path.** Whatever stops or changes the music (song stop, stop-all, fade-out, scene

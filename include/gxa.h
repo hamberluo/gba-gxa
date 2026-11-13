@@ -2,7 +2,7 @@
 /*
  * gxa.h: GXA 1.0 for GBA ROMs, in one header. See SPEC.md for the standard.
  *
- * Works with gcc, clang and agbcc (decomp projects): C89, no stdint.h.
+ * C89, no stdint.h: tested with gcc (C89, C99, C++); written for agbcc too, but not tested with it.
  *
  *     #include "gxa.h"
  *

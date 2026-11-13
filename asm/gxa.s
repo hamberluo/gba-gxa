@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: MIT
  *
- * gxa.s: GXA 1.0 routines for binary hacks (SPEC.md). Thumb code, written in the syntax that armips and
- * GNU as both accept, so it can be .include'd from an armips patch or assembled with arm-none-eabi-as.
+ * gxa.s: GXA 1.0 routines for binary hacks (SPEC.md). Thumb code in the syntax armips and GNU as both
+ * accept: .include it from an armips patch or a GNU as source (its labels are local to that file).
  *
  * Call them with bl. They use only r0-r3 and return with bx lr.
  *
- *   gxa_detect       -> r0 = 1 when a GXA emulator has a pack for this ROM loaded, else 0.
+ *   gxa_has_pack     -> r0 = 1 when a GXA emulator has a pack for this ROM loaded, else 0.
  *                       Treat 0 as "no GXA": run the game's original code.
  *   gxa_play_track   r0 = channel (0-3), r1 = track id, r2 = 1 to loop / 0 to play once
  *                    -> r0 = 1 if the track started, 0 if it is missing or broken (then fall back).
@@ -17,7 +17,7 @@
 	.thumb
 	.align 2
 
-gxa_detect:
+gxa_has_pack:
 	ldr	r3, =0x04FFFA00
 	ldr	r0, =0x1234
 	strh	r0, [r3, #4]		/* HANDSHAKE = 0x1234 */
@@ -25,15 +25,15 @@ gxa_detect:
 	ldr	r2, =0x4A73		/* 0x1234 ^ 0x5847 */
 	mov	r0, #0
 	cmp	r1, r2
-	bne	gxa_detect_done
+	bne	gxa_has_pack_done
 	ldrh	r1, [r3, #6]		/* VERSION: major 1 */
 	lsr	r1, r1, #8
 	cmp	r1, #1
-	bne	gxa_detect_done
+	bne	gxa_has_pack_done
 	ldrh	r1, [r3, #8]		/* STATUS bit 0: a pack is loaded */
 	mov	r0, #1
 	and	r0, r1
-gxa_detect_done:
+gxa_has_pack_done:
 	bx	lr
 
 gxa_play_track:

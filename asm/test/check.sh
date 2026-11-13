@@ -4,8 +4,9 @@
 # Builds asm/test/out/gxa-smoke.gba (conformance header, so the conformance pack loads) for running on an emulator.
 set -e
 cd "$(dirname "$0")"
-if grep -nE '\b(strb|ldrb)\b' ../gxa.s; then
-	echo "gxa.s: 8-bit access to GXA registers is undefined"; exit 1
+# GXA registers take 16- and 32-bit accesses only; the code that touches them has no 8-bit access at all
+if grep -nE '\b(strb|ldrb)\b' ../gxa.s ../../examples/binary-hook/hook.asm; then
+	echo "8-bit access in GXA code (undefined on GXA registers)"; exit 1
 fi
 # the handshake reply is 0x1234 ^ 0x5847
 grep -q "=0x$(printf '%X' $((0x1234 ^ 0x5847)))" ../gxa.s || { echo "gxa.s: wrong handshake reply"; exit 1; }

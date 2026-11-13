@@ -10,8 +10,9 @@ play their music from GXA when they can and from the GBA's own sound when they c
 
 ## 1. Add the header
 
-Copy [include/gxa.h](../../include/gxa.h) into your project. It is one file, C89, with no `stdint.h`, so it
-builds with gcc, clang and agbcc (the compiler the pret decomp projects use).
+Copy [include/gxa.h](../../include/gxa.h) into your project. It is one file, C89, with no `stdint.h`. It is
+tested with gcc as C89, C99 and C++; it is written for agbcc (the compiler of the pret decomp projects) too,
+but not yet tested with it, so report a build error there as a bug.
 
 ## 2. Find the one place your music starts
 

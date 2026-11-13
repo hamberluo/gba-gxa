@@ -10,8 +10,8 @@ GXA 就用 GXA，不能用就用 GBA 自己的声音。
 
 ## 1. 加入头文件
 
-把 [include/gxa.h](../../include/gxa.h) 复制进项目。它只有一个文件，C89，不依赖 `stdint.h`，gcc、clang 和
-agbcc（pret 系 decomp 项目用的编译器）都能编译。
+把 [include/gxa.h](../../include/gxa.h) 复制进项目。它只有一个文件，C89，不依赖 `stdint.h`。已经用 gcc 按
+C89、C99 和 C++ 测试过；它也是按 agbcc（pret 系 decomp 项目用的编译器）的要求写的，但还没有用 agbcc 实测，如果编译出错请当作 bug 报告。
 
 ## 2. 找到音乐开始播放的那一处
 

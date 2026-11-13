@@ -14,8 +14,6 @@ ROM 只需写几个寄存器，支持 GXA 的模拟器就会从 ROM 旁边的 `.
 
 梦幻模拟战 II（Langrisser II）配音版在 GoGBA 上运行，剧情全程由 GXA pack 提供配音。
 
-![conformance ROM：全部通过](test-rom/conformance.png)
-
 ## 从哪里开始
 
 | 你是 | 阅读 |
@@ -34,6 +32,8 @@ ROM 只需写几个寄存器，支持 GXA 的模拟器就会从 ROM 旁边的 `.
 | 模拟器 | GXA | Conformance |
 |---|---|---|
 | [GoGBA](https://gogba.xyz/)（iOS、Android），核心：[libretro-mgba](https://github.com/hamberluo/libretro-mgba) | 1.0 | 全部通过 |
+
+![conformance ROM 在 GoGBA 核心上：全部通过](test-rom/conformance.png)
 
 你的模拟器实现了 GXA？请提一个 [emulator support issue](https://github.com/hamberluo/gba-gxa/issues/new?template=emulator-support.yml)，
 附上 conformance ROM 的运行截图。
