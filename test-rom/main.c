@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// GXA conformance ROM (gxa/SPEC.md). Each case draws a 16 px row, green on pass and red on fail, and sets
+// GXA conformance ROM (SPEC.md). Each case draws a 16 px row, green on pass and red on fail, and sets
 // its bit in the result block at 0x02000100 (magic "GXAR", pass bits, done, case count) for automated runs.
 // Needs its pack (gxa-conformance.gxa): track 1 is 1.0 s, track 2 a 0.5 s loop, track 7 is listed nowhere.
 #include <stdint.h>

@@ -162,7 +162,7 @@ the whole pack; players import the new one in place of the old.
 - A newer ROM with an older pack plays what the pack holds: the tracks it
   lacks read missing, and the ROM carries on as without GXA for those.
 
-`gxa/tools/gxa_pack.py` builds a pack from a directory. It encodes WAV and
+`tools/gxa_pack.py` builds a pack from a directory. It encodes WAV and
 FLAC files, checks every rule above, and writes stored entries.
 
 ## 5. Frontends
@@ -181,7 +181,7 @@ FLAC files, checks every rule above, and writes stored entries.
 
 ## 6. Conformance
 
-`gxa/test-rom/gxa-conformance.gba` and its pack `gxa-conformance.gxa` check:
+`test-rom/gxa-conformance.gba` and its pack `gxa-conformance.gxa` check:
 - the handshake and `STATUS`;
 - that a one-second play ends on time;
 - missing tracks;
