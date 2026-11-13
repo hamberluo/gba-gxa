@@ -4,13 +4,15 @@
 // Needs its pack (gxa-conformance.gxa): track 1 is 1.0 s, track 2 a 0.5 s loop, track 7 is listed nowhere.
 #include <stdint.h>
 
+#include "gxa.h"
+
 #define REG16(a) (*(volatile uint16_t*) (a))
 #define REG32(a) (*(volatile uint32_t*) (a))
-#define GXA(off) REG16(0x04FFFA00 + (off))
-#define GXA32(off) REG32(0x04FFFA00 + (off))
-#define CH(n, off) (0x10 + 0x10 * (n) + (off))
-enum { TRACK = 0, CTRL = 2, VOL = 4, FADE = 6, STATE = 8, POS = 0xC };
-enum { PLAYING = 1, PAUSED = 2, ENDED = 4, MISSING = 8 };
+#define GXA(off) GXA_REG(off)
+#define GXA32(off) REG32(GXA_BASE + (off))   // the store-order case needs a real 32-bit store
+#define CH(n, off) (GXA_CH(n) + (off))
+enum { TRACK = GXA_TRACK, CTRL = GXA_CTRL, VOL = GXA_VOL, FADE = GXA_FADE, STATE = GXA_STATE, POS = GXA_POS };
+enum { PLAYING = GXA_PLAYING, PAUSED = GXA_PAUSED, ENDED = GXA_ENDED, MISSING = GXA_MISSING };
 
 #define DISPCNT REG16(0x04000000)
 #define VCOUNT REG16(0x04000006)
@@ -47,21 +49,19 @@ static void report(int i, int pass) {
 }
 
 static uint32_t pos(int ch) {
-	return GXA32(CH(ch, POS));
+	return gxa_pos(ch);
 }
 
 static int handshake(void) {
-	GXA(4) = 0x1234;
-	return GXA(0) == 0x5847 && GXA(2) == 0x3141 && GXA(4) == (0x1234 ^ 0x5847) && GXA(6) == 0x0100;
+	return gxa_detect() && GXA(GXA_ID0) == 0x5847 && GXA(GXA_ID1) == 0x3141 && GXA(GXA_VERSION) == 0x0100;
 }
 
 static int status(void) {
-	return GXA(8) == 0x0401;
+	return gxa_has_pack() && GXA(GXA_STATUS) == 0x0401;
 }
 
 static int length(void) {
-	GXA(CH(0, TRACK)) = 1;
-	GXA(CH(0, CTRL)) = 1;
+	gxa_play(0, 1);
 	int n = 0;
 	while (GXA(CH(0, STATE)) & PLAYING && n < 120) {
 		frame();
@@ -72,23 +72,21 @@ static int length(void) {
 }
 
 static int missing(void) {
-	GXA(CH(1, TRACK)) = 7;
-	GXA(CH(1, CTRL)) = 1;
-	return GXA(CH(1, STATE)) == (MISSING | ENDED);
+	gxa_play(1, 7);
+	return GXA(CH(1, STATE)) == (MISSING | ENDED) && !gxa_started(1);
 }
 
 static int loop(void) {
-	GXA(CH(2, TRACK)) = 2;
-	GXA(CH(2, CTRL)) = 2;
+	gxa_loop(2, 2);
+	int started = gxa_started(2);
 	frames(72);   // 1.2 s: past twice the track
-	int ok = GXA(CH(2, STATE)) == PLAYING && pos(2) >= 1100;
-	GXA(CH(2, CTRL)) = 3;
+	int ok = started && GXA(CH(2, STATE)) == PLAYING && pos(2) >= 1100;
+	gxa_stop(2);
 	return ok && GXA(CH(2, STATE)) == 0;
 }
 
 static int pause(void) {
-	GXA(CH(3, TRACK)) = 1;
-	GXA(CH(3, CTRL)) = 1;
+	gxa_play(3, 1);
 	frames(10);
 	GXA(CH(3, CTRL)) = 4;
 	uint32_t held = pos(3);
@@ -97,7 +95,7 @@ static int pause(void) {
 	GXA(CH(3, CTRL)) = 5;
 	frames(5);
 	ok = ok && GXA(CH(3, STATE)) == PLAYING && pos(3) > held;
-	GXA(CH(3, CTRL)) = 3;
+	gxa_stop(3);
 	return ok;
 }
 

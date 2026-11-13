@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 PY=${PY:-python3}
 T=$(mktemp -d)
 arm-none-eabi-gcc -mcpu=arm7tdmi -mthumb -mthumb-interwork -O2 -ffreestanding -nostdlib -Wall \
-	-T gba.ld -o "$T/rom.elf" crt0.s main.c -lgcc
+	-I../include -T gba.ld -o "$T/rom.elf" crt0.s main.c -lgcc
 arm-none-eabi-objcopy -O binary "$T/rom.elf" gxa-conformance.gba
 "$PY" - gxa-conformance.gba <<'PYEOF'
 import sys, zlib
