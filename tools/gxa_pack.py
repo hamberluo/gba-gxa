@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Builds a GXA pack (gxa/SPEC.md): a store-only zip of manifest.json and Ogg Vorbis tracks.
+"""Builds a GXA pack (SPEC.md): a store-only zip of manifest.json and Ogg Vorbis tracks.
 
 usage: gxa_pack.py <dir> <out.gxa> [--quality Q]
 <dir> holds manifest.json and the files its tracks name. WAV and FLAC files are encoded to Ogg Vorbis
