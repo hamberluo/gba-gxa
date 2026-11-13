@@ -37,7 +37,8 @@ The ROM will also run on hardware and on emulators without GXA. Breaking those i
   the end of a full ROM); re-run the displaced instructions exactly; run
   `python3 tools/gba_header.py --check rom.gba` after patching.
 - **Song numbers and the BGM player are per game.** Find song numbers with a debugger breakpoint on
-  `m4aSongNumStart` (r0), and the BGM player with `m4a_locate.py --song N`. If you cannot run a debugger,
+  `m4aSongNumStart` (r0), and the BGM player with `m4a_locate.py --song N` (or let
+  `--armips --bgm-song N` write it into `defs.asm`). If you cannot run a debugger,
   ask the person for the song numbers instead of guessing.
 - **Track ids:** once a released ROM uses an id, it keeps its meaning. New or changed audio takes a new id.
 

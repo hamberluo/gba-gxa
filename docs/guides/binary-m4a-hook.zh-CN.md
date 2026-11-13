@@ -33,20 +33,26 @@ python3 tools/m4a_locate.py --song 413 game.gba
 # song 413: player 0 (header 0x08...)
 ```
 
-把标题画面或大地图音乐所用的播放器编号填到 `BGM_PLAYER`（第 3 步）。很多游戏是 0，但不全是；我们测试过的一个游戏是 31。
+标题画面或大地图音乐所用的播放器，就是这个游戏的 BGM 播放器。很多游戏是 0，但不全是；我们测试过的一个游戏是 31。第 3 步用
+`--bgm-song` 会自动设置它。
 
 ## 3. 编写补丁
 
-在本仓库的一份副本里操作（或者任何保持 `examples/binary-hook/` 和 `asm/` 相对位置不变的目录）：`hook.asm` 会 include
-`../../asm/gxa.s`。
+在本仓库的一份副本里操作。如果只复制需要的文件，要保持下面的目录结构，因为 `hook.asm` 会 include `../../asm/gxa.s`：
+
+```
+任意目录/
+  asm/gxa.s
+  examples/binary-hook/hook.asm、example.asm、（你的 my-hack.asm 和 defs.asm）
+```
 
 ```sh
 cd examples/binary-hook
-python3 ../../tools/m4a_locate.py --armips /path/to/game.gba > defs.asm
+python3 ../../tools/m4a_locate.py --armips --bgm-song 413 /path/to/game.gba > defs.asm   # 413：你的标题歌曲
 cp example.asm my-hack.asm
 ```
 
-在 `my-hack.asm` 里填好 `.open` 的输入、输出 ROM 路径（可以用绝对路径），`BGM_PLAYER` 和映射表：
+在 `my-hack.asm` 里填好 `.open` 的输入、输出 ROM 路径（可以用绝对路径，比如 `"/home/me/game.gba"`）和映射表：
 
 ```
 gxa_song_tracks:
@@ -61,6 +67,7 @@ gxa_song_tracks:
 
 ```sh
 armips my-hack.asm                   # 在 examples/binary-hook 目录里运行，或：armips -root <该目录> my-hack.asm
+                                     # （sh tools/get_armips.sh 会编译 armips 并打印它的路径）
 python3 ../../tools/gba_header.py --check game-gxa.gba
 ```
 
@@ -83,8 +90,8 @@ python3 ../../tools/gba_header.py --check game-gxa.gba
 | 同上，但 pack 里删掉一首已映射的曲目 | 那个场景播原来的音乐 |
 | 不支持 GXA 的模拟器，或不放 pack | 游戏和原来完全一样 |
 
-第二项测试的做法：复制一份 pack 目录，从 `manifest.json` 里删掉一首曲目，另打一个 pack。要确认原曲确实被静音，可以做一个曲目全是静音的
-pack：这时已映射的场景除了音效之外应该没有声音。
+第二项测试的做法：复制一份 pack 目录，从 `manifest.json` 里删掉一首曲目，另打一个 pack（如果那是唯一的曲目，就放一个映射表里没用到的曲目
+id 进去：pack 至少要有一首）。要确认原曲确实被静音，可以做一个曲目全是静音的 pack：这时已映射的场景应该没有声音，只剩音效，以及同时在其他播放器上播放的、你没映射的歌。
 
 ## hook 的工作原理
 

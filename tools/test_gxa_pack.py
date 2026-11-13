@@ -48,6 +48,7 @@ def test_packs_store_only(tmp_path):
     assert m['tracks']['2']['loop'] == 12000
     for t in m['tracks'].values():
         assert z.read(t['file'])[:4] == b'OggS'
+    assert r.stdout.strip() == '%s: 3 tracks' % out
 
 
 def test_core_reads_it(tmp_path):

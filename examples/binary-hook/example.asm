@@ -1,14 +1,13 @@
 ; SPDX-License-Identifier: MIT
-; Copy this file, set the file names, BGM_PLAYER and the song table, then, in examples/binary-hook:
-;   python3 ../../tools/m4a_locate.py --armips /path/to/game.gba > defs.asm
+; Copy this file, set the ROM paths and the song table, then, in examples/binary-hook:
+;   python3 ../../tools/m4a_locate.py --armips --bgm-song <title song> /path/to/game.gba > defs.asm
 ;   armips my-hack.asm
 ;   python3 ../../tools/gba_header.py --check game-gxa.gba
 ; Guide: docs/guides/binary-m4a-hook.md
 .gba
-.open "game.gba", "game-gxa.gba", 0x08000000
+.open "game.gba", "game-gxa.gba", 0x08000000	; input, output; absolute paths work: "/home/me/game.gba"
 
-.include "defs.asm"
-.definelabel BGM_PLAYER, 0		; the music's player: m4a_locate.py --song <title song> (not always 0)
+.include "defs.asm"			; addresses, PLAYER_REG, FreeSpace and BGM_PLAYER for this ROM
 
 .include "hook.asm"
 

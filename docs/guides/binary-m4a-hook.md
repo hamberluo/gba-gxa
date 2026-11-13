@@ -38,22 +38,28 @@ python3 tools/m4a_locate.py --song 413 game.gba
 # song 413: player 0 (header 0x08...)
 ```
 
-Set `BGM_PLAYER` (step 3) to the player of your title or field music. It is 0 in many games but not all;
-one game we tested uses 31.
+The player of your title or field music is the game's BGM player. It is 0 in many games but not all; one
+game we tested uses 31. Step 3 sets it for you with `--bgm-song`.
 
 ## 3. Write the patch
 
-Work in a copy of this repository (or any folder that keeps `examples/binary-hook/` and `asm/` side by
-side): `hook.asm` includes `../../asm/gxa.s`.
+Work in a copy of this repository. If you copy only the files you need, keep this layout, because
+`hook.asm` includes `../../asm/gxa.s`:
+
+```
+anywhere/
+  asm/gxa.s
+  examples/binary-hook/hook.asm, example.asm, (your my-hack.asm and defs.asm)
+```
 
 ```sh
 cd examples/binary-hook
-python3 ../../tools/m4a_locate.py --armips /path/to/game.gba > defs.asm
+python3 ../../tools/m4a_locate.py --armips --bgm-song 413 /path/to/game.gba > defs.asm   # 413: your title song
 cp example.asm my-hack.asm
 ```
 
-In `my-hack.asm`, set the input and output ROM paths in `.open` (absolute paths are fine), `BGM_PLAYER`, and
-the table:
+In `my-hack.asm`, set the input and output ROM paths in `.open` (absolute paths are fine, such as
+`"/home/me/game.gba"`), and the table:
 
 ```
 gxa_song_tracks:
@@ -68,6 +74,7 @@ Songs not in the table play as before.
 
 ```sh
 armips my-hack.asm                   # from examples/binary-hook, or: armips -root <that folder> my-hack.asm
+                                     # (sh tools/get_armips.sh builds armips and prints its path)
 python3 ../../tools/gba_header.py --check game-gxa.gba
 ```
 
@@ -92,8 +99,10 @@ Follow [making-a-pack.md](making-a-pack.md), in this order:
 | Emulator without GXA, or no pack | the game exactly as before |
 
 For the second run, copy the pack folder, delete one track from its `manifest.json`, and build it as a
-second pack. To check that the original music is really muted, build a pack whose tracks are silence: the
-mapped scenes must then be silent apart from sound effects.
+second pack (if it was the only track, put in a track id your table does not use: a pack needs one). To check
+that the original music is really muted, build a pack whose tracks are silence: the mapped scenes must then
+be silent apart from sound effects and songs you did not map, which may play on other players at the same
+time.
 
 ## How the hook works
 

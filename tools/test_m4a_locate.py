@@ -249,3 +249,24 @@ def test_cli_text_prints_player_reg_as_a_number(tmp_path):
     lines = r.stdout.splitlines()
     assert 'player_reg                 r3' in lines
     assert any(l.startswith('m4aSongNumStart ') and '(0x08' in l for l in lines)
+
+
+def test_cli_armips_bgm_song_sets_bgm_player(tmp_path):
+    rom, want = blob()
+    d = bytearray(rom)
+    struct.pack_into('<IHH', d, 0x200 + 8 * 2, 0x08000100, 7, 7)   # song 2 on player 7
+    (tmp_path / 'r.gba').write_bytes(bytes(d) + b'\xFF' * 0x2000)
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', '--bgm-song', '2', str(tmp_path / 'r.gba')],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert '.definelabel BGM_PLAYER, 7' in r.stdout.splitlines()
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'r.gba')], capture_output=True, text=True)
+    assert 'BGM_PLAYER' not in r.stdout
+
+
+def test_cli_song_with_armips_is_refused(tmp_path):
+    rom, want = blob()
+    (tmp_path / 'r.gba').write_bytes(rom)
+    r = subprocess.run([sys.executable, str(TOOL), '--armips', '--song', '2', str(tmp_path / 'r.gba')],
+                       capture_output=True, text=True)
+    assert r.returncode != 0 and r.stdout == ''

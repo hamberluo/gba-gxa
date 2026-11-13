@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Finds the m4a (Sappy) sound engine's song functions in a GBA ROM, for hooking them (docs/guides/binary-m4a-hook.md).
 
-usage: m4a_locate.py [--json | --armips | --song N] [--free BYTES] rom.gba
+usage: m4a_locate.py [--json | --armips [--bgm-song N] | --song N] [--free BYTES] rom.gba
 
 Prints ROM offsets (add 0x08000000 for the address) of m4aSongNumStart, m4aSongNumStartOrChange,
 m4aSongNumStartOrContinue, m4aSongNumStop, m4aSongNumContinue, MPlayStart, MPlayStop, the song table, and
 the last run of at least BYTES (default 4096) 0xFF bytes for new code. Exits 2 if the ROM is not an m4a game.
 --armips prints the addresses as armips .definelabel lines for examples/binary-hook/hook.asm, or exits 3 when
-the hook template does not fit this ROM. --song N prints song N's player index (for BGM_PLAYER).
+the hook template does not fit this ROM; with --bgm-song N it also sets BGM_PLAYER to song N's player.
+--song N prints song N's player index.
 
 Method: the m4aSongNum* functions all begin by indexing the song table with the song number
 (n << 16 >> 13 = n * 8). Among them, the most frequent call target is MPlayStart; the one that only calls
@@ -177,12 +178,16 @@ def hook_check(rom, got):
 
 def main():
     a = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    a.add_argument('--json', action='store_true')
-    a.add_argument('--armips', action='store_true')
-    a.add_argument('--song', type=int)
+    g = a.add_mutually_exclusive_group()
+    g.add_argument('--json', action='store_true')
+    g.add_argument('--armips', action='store_true')
+    g.add_argument('--song', type=int)
+    a.add_argument('--bgm-song', type=int)
     a.add_argument('--free', type=int, default=4096)
     a.add_argument('rom')
     args = a.parse_args()
+    if args.bgm_song is not None and not args.armips:
+        a.error('--bgm-song goes with --armips')
     rom = open(args.rom, 'rb').read()
     try:
         out = locate(rom)
@@ -215,6 +220,8 @@ def main():
         if extend:
             print('; no 0xFF free space at the end: the patch extends the ROM past its end')
         print('.definelabel FreeSpace, 0x%08X' % (((len(rom) + 3) & ~3 if extend else fs[0]) + ROM_BASE))
+        if args.bgm_song is not None:
+            print('.definelabel BGM_PLAYER, %d' % struct.unpack_from('<H', rom, out['song_table'] + 8 * args.bgm_song + 4)[0])
         return 0
     if args.json:
         res = {k: '0x%X' % v for k, v in out.items()}

@@ -86,6 +86,9 @@ def main():
     errors = build(a.dir, a.out, a.quality)
     for e in errors:
         print(e, file=sys.stderr)
+    if not errors:
+        n = len(json.loads((pathlib.Path(a.dir) / 'manifest.json').read_text()).get('tracks', {}))
+        print('%s: %d tracks' % (a.out, n))
     sys.exit(1 if errors else 0)
 
 

@@ -6,7 +6,8 @@
 ;
 ; Before including it, define (python3 tools/m4a_locate.py --armips game.gba > defs.asm does all but the last):
 ;   m4aSongNumStart, m4aSongNumStartOrChange, m4aSongNumStartOrContinue, m4aSongNumStop,
-;   PlayerTable, SongTable, PLAYER_REG (2 or 3), FreeSpace, and BGM_PLAYER (the music player's index, usually 0).
+;   PlayerTable, SongTable, PLAYER_REG (2 or 3), FreeSpace, and BGM_PLAYER (the music player's index): use
+;   m4a_locate.py --armips --bgm-song <a music song> game.gba > defs.asm
 ; After including it, define the table gxa_song_tracks: .halfword song, track pairs, ended by .halfword 0xFFFF.
 ;
 ; The game's own song always starts as before, so everything the game checks about its music (is it playing,
