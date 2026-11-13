@@ -20,7 +20,32 @@ def encode(path, quality):
     b = io.BytesIO()
     # libsndfile's Vorbis compression level is 1 - quality
     sf.write(b, x, rate, format='OGG', subtype='VORBIS', compression_level=1 - quality)
-    return b.getvalue()
+    return fixed_serial(b.getvalue())
+
+
+OGG_CRC = []
+for i in range(256):
+    c = i << 24
+    for _ in range(8):
+        c = (c << 1) ^ 0x04C11DB7 if c & 0x80000000 else c << 1
+    OGG_CRC.append(c & 0xFFFFFFFF)
+
+
+def fixed_serial(data):
+    """The encoder picks a random stream serial; a fixed one makes the same input give the same pack."""
+    d = bytearray(data)
+    at = 0
+    while d[at:at + 4] == b'OggS':
+        n = d[at + 26]
+        size = 27 + n + sum(d[at + 27:at + 27 + n])
+        d[at + 14:at + 18] = (1).to_bytes(4, 'little')
+        d[at + 22:at + 26] = bytes(4)
+        crc = 0
+        for byte in d[at:at + size]:
+            crc = ((crc << 8) & 0xFFFFFFFF) ^ OGG_CRC[(crc >> 24) ^ byte]
+        d[at + 22:at + 26] = crc.to_bytes(4, 'little')
+        at += size
+    return bytes(d)
 
 
 def frames(data):
@@ -71,9 +96,8 @@ def build(src, out, quality=0.4):
         return errors
     m = dict(m, tracks=tracks)
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_STORED) as z:
-        z.writestr('manifest.json', json.dumps(m, indent=1, ensure_ascii=False))
-        for name, data in entries.items():
-            z.writestr(name, data)
+        for name, data in [('manifest.json', json.dumps(m, indent=1, ensure_ascii=False))] + list(entries.items()):
+            z.writestr(zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0)), data)   # same input, same pack
     return []
 
 

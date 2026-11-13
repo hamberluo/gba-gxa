@@ -116,7 +116,8 @@ time.
   An earlier version stopped the m4a player instead; one game then thought its title music had ended and
   went back to the intro.
 - A song on the BGM player loops on GXA channel 0. `...OrChange` and `...OrContinue` do not restart a track
-  that already plays. A song on another player plays once on channel 1, for voice lines and jingles.
+  that already plays. A song on another player plays once on channel 1 + player % 3, for voice lines and jingles; an unmapped song on that
+  player stops that channel, as it would replace the player's m4a song.
 - An unmapped song on the BGM player stops channel 0, so old GXA music never plays under new game music.
 - A missing or broken track reads `missing` or `error` at once (SPEC.md §3), and the original song is heard.
 - When the game pauses its BGM player (`MPlayStop`, for a jingle on another player) and continues it, GXA

@@ -1,29 +1,8 @@
 ; SPDX-License-Identifier: MIT
 ;
-; hook.asm: GXA for m4a (Sappy) games you only have as a ROM. armips v0.11.
-; Guide: docs/guides/binary-m4a-hook.md. Start from example.asm, which includes this file; run armips from
-; this directory (or pass -root with it), since armips resolves .include paths from there.
-;
-; Before including it, define (python3 tools/m4a_locate.py --armips game.gba > defs.asm does all but the last):
-;   m4aSongNumStart, m4aSongNumStartOrChange, m4aSongNumStartOrContinue, m4aSongNumStop, MPlayStop,
-;   MPlayContinue, CONTINUE_PUSH (0 or 1),
-;   PlayerTable, SongTable, PLAYER_REG (2 or 3), FreeSpace, and BGM_PLAYER (the music player's index): use
-;   m4a_locate.py --armips --bgm-song <a music song> game.gba > defs.asm
-; After including it, define the table gxa_song_tracks: .halfword song, track pairs, ended by .halfword 0xFFFF.
-;
-; The game's own song always starts as before, so everything the game checks about its music (is it playing,
-; has it ended) stays true. When GXA plays a track instead, the hook mutes that m4a player.
-; On a GXA emulator with a pack:
-;   - a song that maps to a track, on the BGM player: GXA channel 0 loops the track; the m4a song is muted.
-;     ...OrChange / ...OrContinue do not restart channel 0 when it already plays that track;
-;   - a song on the BGM player with no track: channel 0 stops, the original song is heard;
-;   - a song that maps to a track, on another player: channel 1 + player % 3 plays it once (voice, jingles),
-;     the m4a song is muted; an unmapped song on that player stops that channel;
-;   - a missing or broken track: the original song is heard;
-;   - m4aSongNumStop of a mapped song: every channel playing its track stops;
-;   - MPlayStop / MPlayContinue on the BGM player: channel 0 pauses / resumes with it;
-;   - a song the player refuses (lower priority than the one playing): GXA does nothing.
-; Without GXA or without a pack, nothing changes.
+; hook.asm: GXA for m4a (Sappy) games you only have as a ROM (armips v0.11). What it does and how to use it:
+; docs/guides/binary-m4a-hook.md. Include it after defs.asm (m4a_locate.py --armips --bgm-song N) and define
+; gxa_song_tracks after it (.halfword song, track pairs, ended by .halfword 0xFFFF). Run armips from this folder.
 
 .thumb
 

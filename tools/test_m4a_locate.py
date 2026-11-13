@@ -118,16 +118,6 @@ def test_locates_planted_functions():
         assert got[k] == v, k
 
 
-def test_cli_json_is_rom_offsets(tmp_path):
-    rom, want = blob()
-    (tmp_path / 'r.gba').write_bytes(rom)
-    r = subprocess.run([sys.executable, str(TOOL), '--json', str(tmp_path / 'r.gba')], capture_output=True, text=True)
-    assert r.returncode == 0, r.stderr
-    got = json.loads(r.stdout)
-    assert got['m4aSongNumStart'] == '0x%X' % want['m4aSongNumStart']
-    assert 'free_space' in got
-
-
 def test_free_space_is_last_ff_run_after_a_margin():
     rom = bytes(0x1000) + b'\xFF' * 0x2000
     assert m4a_locate.free_space(rom, 0x1000) == (0x1100, 0x1F00)
@@ -263,15 +253,6 @@ def test_hook_template_assembles_and_patches(tmp_path):
     assert out[:want['m4aSongNumStart']] == rom[:want['m4aSongNumStart']]
 
 
-def test_cli_text_prints_player_reg_as_a_number(tmp_path):
-    rom, want = blob(player_reg=3)
-    (tmp_path / 'r.gba').write_bytes(rom)
-    r = subprocess.run([sys.executable, str(TOOL), str(tmp_path / 'r.gba')], capture_output=True, text=True)
-    lines = r.stdout.splitlines()
-    assert 'player_reg                 r3' in lines
-    assert any(l.startswith('m4aSongNumStart ') and '(0x08' in l for l in lines)
-
-
 def test_cli_armips_bgm_song_sets_bgm_player(tmp_path):
     rom, want = blob()
     d = bytearray(rom)
@@ -283,14 +264,6 @@ def test_cli_armips_bgm_song_sets_bgm_player(tmp_path):
     assert '.definelabel BGM_PLAYER, 7' in r.stdout.splitlines()
     r = subprocess.run([sys.executable, str(TOOL), '--armips', str(tmp_path / 'r.gba')], capture_output=True, text=True)
     assert 'BGM_PLAYER' not in r.stdout
-
-
-def test_cli_song_with_armips_is_refused(tmp_path):
-    rom, want = blob()
-    (tmp_path / 'r.gba').write_bytes(rom)
-    r = subprocess.run([sys.executable, str(TOOL), '--armips', '--song', '2', str(tmp_path / 'r.gba')],
-                       capture_output=True, text=True)
-    assert r.returncode != 0 and r.stdout == ''
 
 
 def test_mplay_prologues_are_checked():

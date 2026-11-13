@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import subprocess
+import time
 import sys
 import zipfile
 
@@ -113,3 +114,12 @@ def test_rejects_empty_match(tmp_path):
 def test_rejects_bad_version(tmp_path):
     r = broken(tmp_path, lambda m: m.update(match=[{'code': 'GXAT', 'title': 'GXA TEST', 'version': [5, 2]}]))
     assert r.returncode != 0 and 'version' in r.stderr
+
+
+def test_same_input_same_bytes(tmp_path):
+    good_dir(tmp_path)
+    a, b = tmp_path / 'a.gxa', tmp_path / 'b.gxa'
+    subprocess.run(PACK + [str(tmp_path), str(a)], check=True, capture_output=True)
+    time.sleep(2)   # zip times have 2 s resolution
+    subprocess.run(PACK + [str(tmp_path), str(b)], check=True, capture_output=True)
+    assert a.read_bytes() == b.read_bytes()

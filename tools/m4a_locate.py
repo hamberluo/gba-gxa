@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Finds the m4a (Sappy) sound engine's song functions in a GBA ROM, for hooking them (docs/guides/binary-m4a-hook.md).
 
-usage: m4a_locate.py [--json | --armips [--bgm-song N] | --song N] [--free BYTES] rom.gba
+usage: m4a_locate.py [--armips [--bgm-song N] | --song N] [--free BYTES] rom.gba
 
 Prints ROM offsets (add 0x08000000 for the address) of m4aSongNumStart, m4aSongNumStartOrChange,
 m4aSongNumStartOrContinue, m4aSongNumStop, m4aSongNumContinue, MPlayStart, MPlayStop, the song table, and
@@ -63,7 +63,7 @@ def song_functions(rom):
         entry = next((off - d for d in (2, 4) if (h16(rom, off - d) & 0xFF00) == 0xB500), None)   # push {.., lr}
         if entry is None or entry in found:
             continue
-        calls, cond, lits = [], False, []
+        calls, cond = [], False
         p = off
         while p < off + 0x60 and not is_end(h16(rom, p)):
             t = bl_target(rom, p)
@@ -73,12 +73,9 @@ def song_functions(rom):
                 continue
             op = h16(rom, p)
             cond |= (op & 0xF000) == 0xD000 and (op & 0x0F00) < 0x0E00
-            v = lit(rom, p)
-            if v is not None:
-                lits.append(v)
             p += 2
         if calls:
-            found[entry] = {'calls': calls, 'cond': cond, 'lits': lits}
+            found[entry] = {'calls': calls, 'cond': cond}
     return found
 
 
@@ -206,7 +203,6 @@ def hook_check(rom, got):
 def main():
     a = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     g = a.add_mutually_exclusive_group()
-    g.add_argument('--json', action='store_true')
     g.add_argument('--armips', action='store_true')
     g.add_argument('--song', type=int)
     a.add_argument('--bgm-song', type=int)
@@ -251,19 +247,13 @@ def main():
         if args.bgm_song is not None:
             print('.definelabel BGM_PLAYER, %d' % struct.unpack_from('<H', rom, out['song_table'] + 8 * args.bgm_song + 4)[0])
         return 0
-    if args.json:
-        res = {k: '0x%X' % v for k, v in out.items()}
-        res['free_space'] = ['0x%X' % fs[0], fs[1]] if fs else None
-        res['hook_problems'] = problems
-        print(json.dumps(res, indent=1))
-    else:
-        for k, v in out.items():
-            if k == 'player_reg':
-                print('%-26s r%d' % (k, v))
-            else:
-                print('%-26s 0x%07X  (0x%08X)' % (k, v, v + ROM_BASE))
-        print('%-26s %s' % ('free_space', '0x%07X, %d bytes' % fs if fs else 'none at the end of the ROM'))
-        print('hook: %s' % ('; '.join(problems) if problems else 'ok (examples/binary-hook fits this ROM)'))
+    for k, v in out.items():
+        if k == 'player_reg':
+            print('%-26s r%d' % (k, v))
+        else:
+            print('%-26s 0x%07X  (0x%08X)' % (k, v, v + ROM_BASE))
+    print('%-26s %s' % ('free_space', '0x%07X, %d bytes' % fs if fs else 'none at the end of the ROM'))
+    print('hook: %s' % ('; '.join(problems) if problems else 'ok (examples/binary-hook fits this ROM)'))
     return 0
 
 
