@@ -1,0 +1,42 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y libsndfile1
+      - run: pip install -r tools/requirements.txt
+      - run: python -m pytest -q tools
+      - run: python tools/check_docs.py
+
+  spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: hamberluo/libretro-mgba
+          ref: 851abe97fa98feea6a911d0f70702995f932cd01   # reference implementation, pinned
+          path: libretro-mgba
+          sparse-checkout: |
+            src/gba/gxa.c
+            include/mgba/internal/gba/gxa.h
+          sparse-checkout-cone-mode: false
+      - run: python3 tools/check_spec.py libretro-mgba
+
+  rom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+      - run: sh include/test/compile.sh
+      - run: sh asm/test/check.sh
+      - run: sh examples/homebrew-bgm/build.sh
+      - run: PY=python3 sh -c 'cd test-rom && arm-none-eabi-gcc -mcpu=arm7tdmi -mthumb -mthumb-interwork -O2 -ffreestanding -nostdlib -Wall -I../include -T gba.ld -o /tmp/rom.elf crt0.s main.c -lgcc'
