@@ -25,7 +25,7 @@ def row(name):
 want = {  # SPEC row -> (offset constant, value constant)
     'ID0': ('REG_ID0', 'GXA_ID'), 'ID1': ('REG_ID1', 'GXA_ID1'), 'HANDSHAKE': ('REG_HANDSHAKE', None),
     'VERSION': ('REG_VERSION', 'GXA_VERSION'), 'STATUS': ('REG_STATUS', None), 'GAMEVOL': ('REG_GAMEVOL', 'GXA_UNITY'),
-    'DUCK': ('REG_DUCK', 'GXA_UNITY'), 'TRACK': ('CH_TRACK', None), 'CTRL': ('CH_CTRL', None),
+    'DUCK': ('REG_DUCK', 'GXA_UNITY'), 'PACKVER': ('REG_PACKVER', None), 'TRACK': ('CH_TRACK', None), 'CTRL': ('CH_CTRL', None),
     'VOL': ('CH_VOL', 'GXA_UNITY'), 'FADE': ('CH_FADE', None), 'STATE': ('CH_STATE', None), 'POS': ('CH_POS_LO', None)}
 bad = []
 for name, (off, val) in want.items():

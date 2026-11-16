@@ -8,7 +8,7 @@ GXA 让 GBA ROM 播放存放在 ROM 之外的音频：剧情配音、重编曲�
 ROM 只需写几个寄存器，支持 GXA 的模拟器就会从 ROM 旁边的 `.gxa` pack 里播放对应曲目。在真机和其他模拟器上，ROM
 照常运行，用的还是原来的声音。
 
-规范正文见 [SPEC.md](SPEC.md)（GXA 1.0，英文为准）。
+规范正文见 [SPEC.md](SPEC.md)（GXA 1.1，英文为准）。
 
 ## 效果
 

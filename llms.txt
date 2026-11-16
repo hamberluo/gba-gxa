@@ -6,7 +6,7 @@ Start with AGENTS.md if you are integrating GXA into a game.
 
 ## Spec
 
-- [SPEC.md](SPEC.md): the normative GXA 1.0 specification (registers, detection, playback, packs, frontends, conformance)
+- [SPEC.md](SPEC.md): the normative GXA 1.1 specification (registers, detection, playback, packs, frontends, conformance)
 - [CHANGELOG.md](CHANGELOG.md): spec and tools versions
 
 ## Integrate

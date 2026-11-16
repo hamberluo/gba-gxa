@@ -9,7 +9,7 @@ high-quality effects. It is the GBA's counterpart to the SNES's MSU-1. A ROM wri
 emulator plays the tracks from a `.gxa` pack beside the ROM. On hardware and other emulators the ROM runs as
 before, with its own sound.
 
-The standard is [SPEC.md](SPEC.md) (GXA 1.0).
+The standard is [SPEC.md](SPEC.md) (GXA 1.1).
 
 ## What it sounds like
 

@@ -38,6 +38,8 @@ WAV and FLAC are encoded to Ogg Vorbis; Ogg files are copied as they are. Mono o
 - `tracks`: track id (as in your ROM) → file. `loop` is the sample frame a loop command returns to, in the
   file's own rate; without it (or with `0`) a loop starts over from the beginning. `gain` is in dB. Background music is
   usually played with the loop command, so give BGM tracks a loop point.
+- `version`: the pack's own version. Bump it on every rebuild: players see it in the frontend, and a ROM can show
+  it from `PACKVER` (`gxa_pack_version()`, the first 16 bytes).
 - `match`: which ROMs load this pack. Pick one:
 
 | Rule | Use it when |

@@ -18,7 +18,7 @@ enum { PLAYING = GXA_PLAYING, PAUSED = GXA_PAUSED, ENDED = GXA_ENDED, MISSING = 
 #define VCOUNT REG16(0x04000006)
 #define VRAM ((volatile uint16_t*) 0x06000000)
 #define RESULT ((volatile uint32_t*) 0x02000100)
-#define CASES 8
+#define CASES 9
 
 static void frame(void) {
 	while (VCOUNT >= 160) {}
@@ -53,7 +53,7 @@ static uint32_t pos(int ch) {
 }
 
 static int handshake(void) {
-	return gxa_detect() && GXA(GXA_ID0) == 0x5847 && GXA(GXA_ID1) == 0x3141 && GXA(GXA_VERSION) == 0x0100;
+	return gxa_detect() && GXA(GXA_ID0) == 0x5847 && GXA(GXA_ID1) == 0x3141 && GXA(GXA_VERSION) == 0x0101;
 }
 
 static int status(void) {
@@ -108,6 +108,16 @@ static int volumes(void) {
 	return ok && GXA(0xA) == 256;
 }
 
+static int packver(void) {
+	char v[GXA_PACKVER_LEN + 1];
+	gxa_pack_version(v);
+	int i, zeros = 1;
+	for (i = 1; i < GXA_PACKVER_LEN; ++i) {
+		zeros = zeros && v[i] == 0;
+	}
+	return v[0] == '1' && zeros;   // the pack's "version": "1", then padding
+}
+
 static int store32(void) {
 	GXA32(CH(0, TRACK)) = (1u << 16) | 1;   // TRACK, then CTRL = play
 	int ok = GXA(CH(0, STATE)) == PLAYING && GXA(CH(0, TRACK)) == 1;
@@ -125,7 +135,7 @@ int main(void) {
 	for (i = 0; i < CASES; ++i) {
 		row(i, 0x4210);
 	}
-	int (*const cases[CASES])(void) = { handshake, status, length, missing, loop, pause, volumes, store32 };
+	int (*const cases[CASES])(void) = { handshake, status, length, missing, loop, pause, volumes, store32, packver };
 	for (i = 0; i < CASES; ++i) {
 		// without GXA the rest cannot pass: report them failed at once
 		report(i, (i == 0 || (RESULT[1] & 1)) && cases[i]());

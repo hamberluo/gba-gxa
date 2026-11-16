@@ -12,6 +12,11 @@ int use(void) {
 		r += (int) gxa_state(1);
 		r += (int) (gxa_pos(1) & 1);
 		gxa_stop(0);
+		{
+			char v[GXA_PACKVER_LEN + 1];
+			gxa_pack_version(v);
+			r += v[0];
+		}
 	}
 	GXA_REG(GXA_GAMEVOL) = 256;
 	GXA_REG(GXA_CH(2) + GXA_VOL) = GXA_UNITY;

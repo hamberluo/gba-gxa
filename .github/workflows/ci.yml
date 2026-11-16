@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: hamberluo/libretro-mgba
-          ref: 851abe97fa98feea6a911d0f70702995f932cd01   # reference implementation, pinned
+          ref: e40800273b8491fafcdd7f63db42cfb109c0e281   # reference implementation, pinned
           path: libretro-mgba
           sparse-checkout: |
             src/gba/gxa.c

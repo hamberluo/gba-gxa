@@ -1,4 +1,4 @@
-# GXA 1.0: external audio for Game Boy Advance ROMs
+# GXA 1.1: external audio for Game Boy Advance ROMs
 
 GXA (GBA eXternal Audio) lets a GBA ROM play audio tracks stored outside the
 ROM, at any quality and length. Typical uses are voiced dialogue, arranged
@@ -30,13 +30,14 @@ track and then plays it.
 | `0x00` | `ID0` | R | `0x5847` | "GX" in memory |
 | `0x02` | `ID1` | R | `0x3141` | "A1" in memory |
 | `0x04` | `HANDSHAKE` | RW | | After v is written, reads `v ^ 0x5847` |
-| `0x06` | `VERSION` | R | `0x0100` | High byte is the major version, low byte the minor |
+| `0x06` | `VERSION` | R | `0x0101` | High byte is the major version, low byte the minor |
 | `0x08` | `STATUS` | R | | Bit 0: a pack is loaded. Bits 8–11: the channel count (4) |
 | `0x0A` | `GAMEVOL` | RW | `256` | Volume of the GBA's own sound, 0–256 (256 = unchanged) |
 | `0x0C` | `DUCK` | RW | `256` | While any channel is playing, the GBA's own sound is scaled by `GAMEVOL × DUCK / 256` |
+| `0x50` | `PACKVER` | R | | 16 bytes at `0x50`–`0x5F`: the first 16 bytes of the manifest's `version`, padded with 0; all 0 without a pack. Since 1.1 |
 
 Values above 256 written to `GAMEVOL`, `DUCK` or `VOL` read back as 256.
-`0x50`–`0x7F` is reserved: it reads 0 and ignores writes. A console reset
+`0x60`–`0x7F` is reserved: it reads 0 and ignores writes. A console reset
 puts every register back to its reset value and stops every channel.
 
 ### Channel registers
@@ -131,6 +132,8 @@ A pack is a zip file with the extension `.gxa`.
 ```
 
 - `spec` MUST be 1.
+- `version` (optional): the pack's own version, as text. A ROM can show it
+  from `PACKVER`, which holds its first 16 bytes.
 - `tracks` maps a decimal track id (0–65535) to an object:
   - `file`: the entry's path inside the zip.
   - `loop` (optional): the sample frame, in the file's own rate, that a loop
@@ -201,3 +204,6 @@ means the run is done. Automated runs read the result block at `0x02000100`:
 
 Minor versions add registers or commands without changing existing ones. A
 ROM that checks `VERSION`'s high byte for 1 keeps working.
+
+- 1.1 adds `PACKVER`. Read it only when `VERSION` is `0x0101` or more: a 1.0
+  emulator reads 0 there, the same as no pack.

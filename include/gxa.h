@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * gxa.h: GXA 1.0 for GBA ROMs, in one header. See SPEC.md for the standard.
+ * gxa.h: GXA 1.1 for GBA ROMs, in one header. See SPEC.md for the standard.
  *
  * C89, no stdint.h: tested with gcc (C89, C99, C++); written for agbcc too, but not tested with it.
  *
@@ -32,6 +32,8 @@ typedef unsigned long gxa_u32;
 #define GXA_STATUS 0x08
 #define GXA_GAMEVOL 0x0A
 #define GXA_DUCK 0x0C
+#define GXA_PACKVER 0x50 /* 16 bytes, since 1.1 */
+#define GXA_PACKVER_LEN 16
 
 /* Channel n (0-3) registers: GXA_REG(GXA_CH(n) + GXA_TRACK) */
 #define GXA_CHANNELS 4
@@ -95,6 +97,17 @@ GXA_FN void gxa_stop(int ch) {
 GXA_FN void gxa_fade(int ch, gxa_u16 vol, gxa_u16 ms) {
 	GXA_REG(GXA_CH(ch) + GXA_FADE) = ms;
 	GXA_REG(GXA_CH(ch) + GXA_VOL) = vol;
+}
+
+/* The pack's version text (manifest "version", at most 16 bytes) into out[17]; "" before GXA 1.1. */
+GXA_FN void gxa_pack_version(char *out) {
+	int i;
+	for (i = 0; i < GXA_PACKVER_LEN; i += 2) {
+		gxa_u16 v = GXA_REG(GXA_VERSION) >= 0x0101 ? GXA_REG(GXA_PACKVER + i) : 0;
+		out[i] = (char) (v & 0xFF);
+		out[i + 1] = (char) (v >> 8);
+	}
+	out[GXA_PACKVER_LEN] = 0;
 }
 
 GXA_FN gxa_u16 gxa_state(int ch) {

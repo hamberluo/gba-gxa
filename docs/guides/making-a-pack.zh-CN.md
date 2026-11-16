@@ -37,6 +37,8 @@ WAV 和 FLAC 会被编码成 Ogg Vorbis，Ogg 文件原样放入。单声道、�
 
 - `tracks`：曲目 id（和 ROM 里用的一致）→ 文件。`loop` 是循环命令跳回的采样帧，按文件自身的采样率计；不写（或写 `0`）时循环从头开始。
   `gain` 的单位是 dB。背景音乐通常用循环命令播放，记得给 BGM 曲目设置 loop 点。
+- `version`：pack 自己的版本号，每次重新打包都要递增。玩家在前端里看得到，ROM 也可以通过 `PACKVER` 读出来显示
+  （`gxa_pack_version()`，前 16 字节）。
 - `match`：哪些 ROM 会加载这个 pack，二选一：
 
 | 规则 | 适用场景 |
