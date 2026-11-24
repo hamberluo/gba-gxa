@@ -34,6 +34,7 @@ every emulator, and how to verify the result.
 | Emulator | GXA | Conformance |
 |---|---|---|
 | [GoGBA](https://gogba.xyz/) (iOS, Android), core: [libretro-mgba](https://github.com/hamberluo/libretro-mgba) | 1.0 | all pass |
+| [悠GBA](https://peketools.top/yogba/) (Android) 1.8.5+ | 1.1 | not yet run |
 
 ![conformance ROM on GoGBA's core: every row green](test-rom/conformance.png)
 

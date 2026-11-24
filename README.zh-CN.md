@@ -32,6 +32,7 @@ ROM 只需写几个寄存器，支持 GXA 的模拟器就会从 ROM 旁边的 `.
 | 模拟器 | GXA | Conformance |
 |---|---|---|
 | [GoGBA](https://gogba.xyz/)（iOS、Android），核心：[libretro-mgba](https://github.com/hamberluo/libretro-mgba) | 1.0 | 全部通过 |
+| [悠GBA](https://peketools.top/yogba/)（Android）1.8.5+ | 1.1 | 未测 |
 
 ![conformance ROM 在 GoGBA 核心上：全部通过](test-rom/conformance.png)
 

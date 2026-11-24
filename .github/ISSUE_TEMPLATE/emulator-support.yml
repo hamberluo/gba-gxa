@@ -18,7 +18,7 @@ body:
     id: version
     attributes:
       label: GXA version / GXA 版本
-      options: ["1.0"]
+      options: ["1.1", "1.0"]
     validations:
       required: true
   - type: textarea

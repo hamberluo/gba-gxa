@@ -3,13 +3,13 @@
 The spec and the tools are versioned separately. Spec versions follow SPEC.md §7:
 minor versions only add registers or commands.
 
-## Unreleased
+## 1.1 (2026-11-24)
 
 ### Spec 1.1
 
 - `PACKVER` (`0x50`–`0x5F`): the pack's manifest `version`, so a ROM can show which pack is loaded. `VERSION` reads `0x0101`.
 
-### Tools
+### Tools 1.1
 
 - `gxa.h`: `gxa_pack_version()`. The conformance ROM checks `PACKVER`.
 
